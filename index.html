@@ -191,7 +191,8 @@
             </table>
         </div>
         <div class="view-stakes-btn">
-            <button onclick="window.location.href='/stakebonus-/general-stakes.html'" aria-label="View all stakes">View All Stakes</button>
+            <!-- Ajuste del enlace -->
+            <button onclick="window.location.href='general-stakes.html'" aria-label="View all stakes">View All Stakes</button>
             <button onclick="window.location.href='/stakebonus-/why-invest-pwr.html'" aria-label="Why Stake PLP is Better">Why Stake PLP is Better</button>
         </div>
         <div class="status" id="status">Status: Waiting for action...</div>
@@ -491,7 +492,7 @@
                 const balance = web3.utils.fromWei(balanceWei, 'ether');
                 const balanceUsd = (parseFloat(balance) * plpPriceUsd).toFixed(2);
                 document.getElementById('plpBalance').innerText = parseFloat(balance).toFixed(4);
-                document.getElementById('plpBalanceUsd').innerText = balanceUsd;
+                document.getId('plpBalanceUsd').innerText = balanceUsd;
                 console.log("PLP balance:", balance, "USD:", balanceUsd);
             } catch (error) {
                 console.error("PLP balance error:", error);
