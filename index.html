@@ -191,7 +191,6 @@
             </table>
         </div>
         <div class="view-stakes-btn">
-            <!-- Ajuste del enlace -->
             <button onclick="window.location.href='general-stakes.html'" aria-label="View all stakes">View All Stakes</button>
             <button onclick="window.location.href='/stakebonus-/why-invest-pwr.html'" aria-label="Why Stake PLP is Better">Why Stake PLP is Better</button>
         </div>
@@ -388,28 +387,99 @@
             }
         }
 
+        async function fetchPriceFromDexScreener(tokenAddress) {
+            try {
+                console.log(`Fetching price for token: ${tokenAddress}`);
+                const response = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${tokenAddress}`);
+                const data = await response.json();
+                console.log(`DexScreener response for ${tokenAddress}:`, data);
+
+                if (!data.pairs || data.pairs.length === 0) {
+                    throw new Error("No trading pairs found");
+                }
+
+                // Seleccionar el par con mayor liquidez (baseToken/quoteToken)
+                const pair = data.pairs.reduce((best, current) => {
+                    const currentLiquidity = parseFloat(current.liquidity?.usd || 0);
+                    const bestLiquidity = parseFloat(best.liquidity?.usd || 0);
+                    return currentLiquidity > bestLiquidity ? current : best;
+                }, data.pairs[0]);
+
+                const priceUsd = parseFloat(pair.priceUsd);
+                if (isNaN(priceUsd) || priceUsd <= 0) {
+                    throw new Error("Invalid price returned");
+                }
+
+                console.log(`Price for ${tokenAddress}: $${priceUsd}`);
+                return priceUsd;
+            } catch (error) {
+                console.error(`Error fetching price from DexScreener for ${tokenAddress}:`, error);
+                throw error;
+            }
+        }
+
+        async function fetchPriceFromCoinGecko(tokenAddress) {
+            try {
+                console.log(`Fetching price from CoinGecko for token: ${tokenAddress}`);
+                // Nota: CoinGecko requiere un ID de token, no una dirección. Para PulseChain, necesitamos mapear las direcciones a IDs.
+                // Esto es un ejemplo, necesitarás los IDs correctos de CoinGecko para PLP y PWR.
+                const tokenIdMap = {
+                    [plpAddressRaw.toLowerCase()]: "pulse-lp", // Reemplaza con el ID real de CoinGecko para PLP
+                    [pwrAddressRaw.toLowerCase()]: "power-coin" // Reemplaza con el ID real de CoinGecko para PWR
+                };
+
+                const tokenId = tokenIdMap[tokenAddress.toLowerCase()];
+                if (!tokenId) {
+                    throw new Error("Token ID not mapped for CoinGecko");
+                }
+
+                const response = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${tokenId}&vs_currencies=usd`);
+                const data = await response.json();
+                console.log(`CoinGecko response for ${tokenAddress}:`, data);
+
+                const priceUsd = parseFloat(data[tokenId]?.usd);
+                if (isNaN(priceUsd) || priceUsd <= 0) {
+                    throw new Error("Invalid price returned from CoinGecko");
+                }
+
+                console.log(`Price for ${tokenAddress} from CoinGecko: $${priceUsd}`);
+                return priceUsd;
+            } catch (error) {
+                console.error(`Error fetching price from CoinGecko for ${tokenAddress}:`, error);
+                throw error;
+            }
+        }
+
         async function updateTokenPrices() {
             try {
                 console.log("Fetching token prices...");
-                const plpResponse = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${plpAddressRaw}`);
-                const plpData = await plpResponse.json();
-                plpPriceUsd = plpData.pairs && plpData.pairs.length > 0 ? parseFloat(plpData.pairs[0].priceUsd) : 0.10;
-                document.getElementById('plpPrice').innerText = plpPriceUsd.toFixed(4);
 
-                const pwrResponse = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${pwrAddressRaw}`);
-                const pwrData = await pwrResponse.json();
-                pwrPriceUsd = pwrData.pairs && pwrData.pairs.length > 0 ? parseFloat(pwrData.pairs[0].priceUsd) : 0.05;
-                document.getElementById('pwrPrice').innerText = pwrPriceUsd.toFixed(4);
+                // Intentar con DexScreener primero
+                try {
+                    plpPriceUsd = await fetchPriceFromDexScreener(plpAddressRaw);
+                    document.getElementById('plpPrice').innerText = plpPriceUsd.toFixed(4);
+                } catch (error) {
+                    console.warn("Falling back to CoinGecko for PLP price...");
+                    plpPriceUsd = await fetchPriceFromCoinGecko(plpAddressRaw);
+                    document.getElementById('plpPrice').innerText = plpPriceUsd.toFixed(4);
+                }
+
+                try {
+                    pwrPriceUsd = await fetchPriceFromDexScreener(pwrAddressRaw);
+                    document.getElementById('pwrPrice').innerText = pwrPriceUsd.toFixed(4);
+                } catch (error) {
+                    console.warn("Falling back to CoinGecko for PWR price...");
+                    pwrPriceUsd = await fetchPriceFromCoinGecko(pwrAddressRaw);
+                    document.getElementById('pwrPrice').innerText = pwrPriceUsd.toFixed(4);
+                }
 
                 updateYieldEstimate();
                 if (account) await updatePLPBalance();
             } catch (error) {
                 console.error("Price fetch error:", error);
-                plpPriceUsd = 0.10;
-                pwrPriceUsd = 0.05;
-                document.getElementById('plpPrice').innerText = "0.10";
-                document.getElementById('pwrPrice').innerText = "0.05";
-                updateStatus("Error loading prices", true);
+                document.getElementById('plpPrice').innerText = "Error";
+                document.getElementById('pwrPrice').innerText = "Error";
+                updateStatus("Error loading prices: " + error.message, true);
             }
         }
 
@@ -492,7 +562,7 @@
                 const balance = web3.utils.fromWei(balanceWei, 'ether');
                 const balanceUsd = (parseFloat(balance) * plpPriceUsd).toFixed(2);
                 document.getElementById('plpBalance').innerText = parseFloat(balance).toFixed(4);
-                document.getId('plpBalanceUsd').innerText = balanceUsd;
+                document.getElementById('plpBalanceUsd').innerText = balanceUsd;
                 console.log("PLP balance:", balance, "USD:", balanceUsd);
             } catch (error) {
                 console.error("PLP balance error:", error);
@@ -690,14 +760,12 @@
                 const apr = parseInt(currentAPR) + bonus;
                 const periodYears = parseFloat(periodDays) / 365;
                 const totalYield = (apr * periodYears).toFixed(2);
-
                 totalYieldDiv.innerText = `${totalYield}%`;
             }).catch(error => {
                 console.error("APR fetch error:", error);
                 const apr = 50 + bonus; // Valor por defecto si falla
                 const periodYears = parseFloat(periodDays) / 365;
                 const totalYield = (apr * periodYears).toFixed(2);
-
                 totalYieldDiv.innerText = `${totalYield}%`;
             });
         }
