@@ -3,138 +3,149 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>General Stakes - PowerStake</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
+    <title>All Stakes - PowerStake</title>
+
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
     <style>
         * { box-sizing: border-box; }
-        body { font-family: 'Montserrat', Arial, sans-serif; margin: 0; padding: 20px; background: linear-gradient(135deg, #0f0f0f 0%, #1a1a1a 100%); color: #ffffff; min-height: 100vh; }
-        .container { max-width: 1200px; margin: 0 auto; background: #1a1a1a; padding: 20px; border-radius: 15px; box-shadow: 0 0 20px rgba(255, 221, 0, 0.4); }
-        h1 { text-align: center; color: #ffdd00; margin-bottom: 20px; font-weight: 700; font-size: 28px; letter-spacing: 2px; text-transform: uppercase; }
-        h2 { color: #ffdd00; font-weight: 600; margin-top: 20px; font-size: 20px; text-transform: uppercase; }
-        button { padding: 10px 20px; background: #ffdd00; color: #000000; border: none; border-radius: 8px; cursor: pointer; margin: 10px 0; transition: all 0.3s ease; font-weight: 600; font-size: 14px; }
-        button:hover { background: #ffea4d; box-shadow: 0 0 15px rgba(255, 221, 0, 0.7); transform: translateY(-2px); }
-        button:disabled { background: #666; cursor: not-allowed; box-shadow: none; transform: none; }
-        .status { margin-top: 15px; padding: 10px; border-radius: 8px; background: #151515; font-size: 14px; text-align: center; border: 1px solid transparent; }
-        .error { color: #ff4d4d; border-color: #ff4d4d; }
-        .success { color: #00cc99; border-color: #00cc99; }
-        table { width: 100%; border-collapse: collapse; margin-top: 15px; background: #151515; border-radius: 8px; overflow: hidden; }
-        th, td { padding: 10px; border: 1px solid #ffdd00; text-align: center; font-size: 12px; }
-        th { background: #ffdd00; color: #000000; font-weight: 600; }
-        td { color: #d0d0d0; }
-        .no-data { text-align: center; padding: 15px; color: #d0d0d0; font-style: italic; }
-        .button-group { display: flex; justify-content: center; align-items: center; gap: 15px; margin-bottom: 20px; }
-        .chart-container { margin: 20px 0; padding: 20px; background: #151515; border-radius: 10px; border: 2px solid #ffdd00; }
-        canvas { max-width: 100%; }
+        body { 
+            font-family: 'Montserrat', Arial, sans-serif; 
+            margin: 0; 
+            padding: 20px; 
+            background: linear-gradient(135deg, #0f0f0f 0%, #1a1a1a 100%); 
+            color: #ffffff; 
+            min-height: 100vh; 
+        }
+        .container { 
+            max-width: 1000px; 
+            margin: 0 auto; 
+            background: #1a1a1a; 
+            padding: 20px; 
+            border-radius: 15px; 
+            box-shadow: 0 0 20px rgba(255, 221, 0, 0.4); 
+        }
+        h2 { 
+            color: #ffdd00; 
+            font-weight: 600; 
+            margin-top: 0; 
+            font-size: 20px; 
+            text-transform: uppercase; 
+            text-align: center; 
+        }
+        table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            margin-top: 15px; 
+            background: #151515; 
+            border-radius: 8px; 
+            overflow: hidden; 
+        }
+        th, td { 
+            padding: 10px; 
+            border: 1px solid #ffdd00; 
+            text-align: center; 
+            font-size: 12px; 
+        }
+        th { 
+            background: #ffdd00; 
+            color: #000000; 
+            font-weight: 600; 
+        }
+        td { 
+            color: #d0d0d0; 
+        }
+        .timer { 
+            color: #00cc99; 
+            font-size: 10px; 
+        }
+        .no-data { 
+            text-align: center; 
+            padding: 15px; 
+            color: #d0d0d0; 
+            font-style: italic; 
+        }
         @media (max-width: 600px) {
             .container { padding: 15px; }
-            h1 { font-size: 24px; }
             h2 { font-size: 18px; }
-            button { padding: 8px 15px; font-size: 12px; }
             th, td { font-size: 10px; padding: 8px; }
-            .button-group { flex-direction: column; gap: 10px; }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>General Stakes</h1>
-        <div class="button-group">
-            <button onclick="window.location.href='index.html'" aria-label="Back to main page">Back to Main</button>
-            <button onclick="window.location.href='plp-value.html'" aria-label="View PLP value in USD">PLP Value</button>
-        </div>
-        <div class="chart-container">
-            <h2>PWR Price History (PulseChain)</h2>
-            <canvas id="pwrPriceChart" height="300"></canvas>
-        </div>
-        <div class="chart-container">
-            <h2>PWR vs PLS Growth (5-Day Intervals)</h2>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Day</th>
-                        <th>PWR Staked</th>
-                        <th>PLP Points</th>
-                        <th>PLS Value</th>
-                        <th>Staker Gains (PLS)</th>
-                    </tr>
-                </thead>
-                <tbody id="growthTable"></tbody>
-            </table>
-        </div>
-        <div>
-            <h2>All Active Stakes</h2>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Stake ID</th>
-                        <th>Owner</th>
-                        <th>Amount (PLP)</th>
-                        <th>Start</th>
-                        <th>End</th>
-                        <th>Time Remaining</th>
-                        <th>APR</th>
-                        <th>Reward (PWR)</th>
-                    </tr>
-                </thead>
-                <tbody id="generalStakesTable"></tbody>
-            </table>
-        </div>
-        <div class="status" id="status">Status: Initializing...</div>
+        <h2>All Stakes</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Stake ID</th>
+                    <th>Owner</th>
+                    <th>Amount</th>
+                    <th>Start</th>
+                    <th>End</th>
+                    <th>Time Remaining</th>
+                    <th>APR</th>
+                    <th>Profit (PWR)</th>
+                </tr>
+            </thead>
+            <tbody id="allStakesTable"></tbody>
+        </table>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/web3@1.7.4/dist/web3.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
     <script>
-        const contractAddress = "0x619aBD3Ab24C8a8a13f15E6DAaa2c31D02267184";
+        const contractAddressRaw = "0x619aBD3Ab24C8a8a13f15E6DAaa2c31D02267184";
         const DESIRED_NETWORK_ID = 369;
+
+        let contractAddress, web3, contract, selectedProvider;
 
         const powerStakeABI = [
             {"inputs":[],"stateMutability":"nonpayable","type":"constructor"},
+            {"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"user","type":"address"},{"indexed":false,"internalType":"uint256","name":"stakeId","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"penaltyBurned","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"penaltyRetained","type":"uint256"}],"name":"EarlyWithdrawal","type":"event"},
+            {"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"user","type":"address"},{"indexed":false,"internalType":"uint256","name":"stakeId","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"rewardAmount","type":"uint256"}],"name":"RewardsClaimed","type":"event"},
+            {"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"user","type":"address"},{"indexed":false,"internalType":"uint256","name":"stakeId","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"plpAmount","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"duration","type":"uint256"}],"name":"StakeCreated","type":"event"},
+            {"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"user","type":"address"},{"indexed":false,"internalType":"uint256","name":"stakeId","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"plpAmount","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"rewardAmount","type":"uint256"}],"name":"StakeWithdrawn","type":"event"},
+            {"inputs":[],"name":"TOTAL_REWARDS","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+            {"inputs":[{"internalType":"uint256","name":"amount","type":"uint256"}],"name":"approvePLP","outputs":[],"stateMutability":"nonpayable","type":"function"},
+            {"inputs":[{"internalType":"uint256","name":"stakeId","type":"uint256"}],"name":"calculateReward","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"nonpayable","type":"function"},
+            {"inputs":[{"internalType":"uint256","name":"stakeId","type":"uint256"}],"name":"claimRewards","outputs":[],"stateMutability":"nonpayable","type":"function"},
+            {"inputs":[{"internalType":"uint256","name":"plpAmount","type":"uint256"},{"internalType":"uint256","name":"duration","type":"uint256"}],"name":"createStake","outputs":[],"stateMutability":"nonpayable","type":"function"},
+            {"inputs":[],"name":"currentAPR","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+            {"inputs":[{"internalType":"uint256","name":"stakeId","type":"uint256"}],"name":"earlyWithdrawStake","outputs":[],"stateMutability":"nonpayable","type":"function"},
             {"inputs":[{"internalType":"uint256","name":"stakeId","type":"uint256"}],"name":"getStakeDetails","outputs":[{"components":[{"internalType":"address","name":"owner","type":"address"},{"internalType":"uint256","name":"plpAmount","type":"uint256"},{"internalType":"uint256","name":"spwrAmount","type":"uint256"},{"internalType":"uint256","name":"startTime","type":"uint256"},{"internalType":"uint256","name":"duration","type":"uint256"},{"internalType":"uint256","name":"endTime","type":"uint256"},{"internalType":"uint256","name":"rewardAmount","type":"uint256"},{"internalType":"uint256","name":"lastUpdate","type":"uint256"},{"internalType":"bool","name":"claimed","type":"bool"}],"internalType":"struct PowerStake.Stake","name":"","type":"tuple"}],"stateMutability":"view","type":"function"},
             {"inputs":[{"internalType":"address","name":"user","type":"address"}],"name":"getUserStakes","outputs":[{"internalType":"uint256[]","name":"","type":"uint256[]"}],"stateMutability":"view","type":"function"},
-            {"inputs":[],"name":"currentAPR","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
-            {"inputs":[{"internalType":"uint256","name":"stakeId","type":"uint256"}],"name":"calculateReward","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"nonpayable","type":"function"}
+            {"inputs":[],"name":"rewardsDistributed","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+            {"inputs":[],"name":"spwrToken","outputs":[{"internalType":"contract SPWRToken","name":"","type":"address"}],"stateMutability":"view","type":"function"},
+            {"inputs":[{"internalType":"uint256","name":"stakeId","type":"uint256"}],"name":"withdrawStake","outputs":[],"stateMutability":"nonpayable","type":"function"}
         ];
 
-        let web3, contract, priceChart;
-
         async function init() {
-            try {
-                if (!window.ethereum) {
-                    throw new Error("No wallet detected. Please install MetaMask or Rabby Wallet.");
-                }
-
-                web3 = new Web3(window.ethereum);
-                contract = new web3.eth.Contract(powerStakeABI, contractAddress);
-
-                await checkNetwork();
-                await Promise.all([
-                    updateGeneralStakesTable(),
-                    updateGrowthTable(),
-                    initPriceChart()
-                ]);
-                updateStatus("Data loaded successfully", false);
-            } catch (error) {
-                updateStatus(`Error: ${error.message}`, true);
-                console.error("Initialization error:", error);
+            console.log("Initializing general stakes page...");
+            if (!window.ethereum) {
+                document.getElementById('allStakesTable').innerHTML = '<tr><td colspan="8" class="no-data">No wallet detected. Install MetaMask or Rabby Wallet.</td></tr>';
+                console.error("No Ethereum provider detected");
+                return;
             }
-        }
 
-        async function checkNetwork() {
+            selectedProvider = window.ethereum;
+            web3 = new Web3(selectedProvider);
+            contractAddress = web3.utils.toChecksumAddress(contractAddressRaw);
+            contract = new web3.eth.Contract(powerStakeABI, contractAddress);
+
             const networkId = await web3.eth.net.getId();
             if (Number(networkId) !== DESIRED_NETWORK_ID) {
                 try {
-                    await window.ethereum.request({
+                    await selectedProvider.request({
                         method: 'wallet_switchEthereumChain',
-                        params: [{ chainId: web3.utils.toHex(DESIRED_NETWORK_ID) }],
+                        params: [{ chainId: `0x${DESIRED_NETWORK_ID.toString(16)}` }],
                     });
                 } catch (switchError) {
                     if (switchError.code === 4902) {
-                        await window.ethereum.request({
+                        await selectedProvider.request({
                             method: 'wallet_addEthereumChain',
                             params: [{
-                                chainId: web3.utils.toHex(DESIRED_NETWORK_ID),
+                                chainId: `0x${DESIRED_NETWORK_ID.toString(16)}`,
                                 chainName: 'PulseChain',
                                 nativeCurrency: { name: 'Pulse', symbol: 'PLS', decimals: 18 },
                                 rpcUrls: ['https://rpc.pulsechain.com'],
@@ -146,152 +157,8 @@
                     }
                 }
             }
-        }
 
-        async function updateGeneralStakesTable() {
-            const tbody = document.getElementById('generalStakesTable');
-            tbody.innerHTML = '<tr><td colspan="8" class="no-data">Loading stakes...</td></tr>';
-            
-            try {
-                let stakeCount = 0;
-                tbody.innerHTML = '';
-
-                for (let stakeId = 0; stakeId < 1000; stakeId++) {
-                    try {
-                        const stake = await contract.methods.getStakeDetails(stakeId).call();
-                        if (!stake.owner || stake.owner === "0x0000000000000000000000000000000000000000" || stake.claimed) {
-                            continue;
-                        }
-
-                        const amount = web3.utils.fromWei(stake.plpAmount, 'ether');
-                        const startDate = new Date(stake.startTime * 1000).toLocaleString();
-                        const endDate = new Date(stake.endTime * 1000).toLocaleString();
-                        const timeRemaining = Math.max(0, stake.endTime - Math.floor(Date.now() / 1000));
-                        const periodDays = stake.duration / (24 * 60 * 60);
-                        const bonus = {30: 0, 60: 10, 90: 20, 180: 40, 360: 80}[periodDays] || 0;
-                        const currentAPR = await contract.methods.currentAPR().call();
-                        const apr = Number(currentAPR) + bonus;
-                        const rewardWei = await contract.methods.calculateReward(stakeId).call();
-                        const reward = web3.utils.fromWei(rewardWei, 'ether');
-
-                        const row = document.createElement('tr');
-                        row.innerHTML = `
-                            <td>${stakeId}</td>
-                            <td>${stake.owner.slice(0, 6)}...${stake.owner.slice(-4)}</td>
-                            <td>${Number(amount).toFixed(4)}</td>
-                            <td>${startDate}</td>
-                            <td>${endDate}</td>
-                            <td>${formatTimeRemaining(timeRemaining)}</td>
-                            <td>${apr}%</td>
-                            <td>${Number(reward).toFixed(4)}</td>
-                        `;
-                        tbody.appendChild(row);
-                        stakeCount++;
-                    } catch (error) {
-                        if (error.message.includes("revert")) break;
-                        console.warn(`Stake ${stakeId} fetch failed:`, error);
-                    }
-                }
-
-                if (stakeCount === 0) {
-                    tbody.innerHTML = '<tr><td colspan="8" class="no-data">No active stakes found</td></tr>';
-                }
-            } catch (error) {
-                tbody.innerHTML = '<tr><td colspan="8" class="no-data">Error loading stakes</td></tr>';
-                console.error("Stake table error:", error);
-            }
-        }
-
-        async function updateGrowthTable() {
-            const tbody = document.getElementById('growthTable');
-            tbody.innerHTML = '<tr><td colspan="5" class="no-data">Loading growth data...</td></tr>';
-
-            try {
-                const currentAPR = await contract.methods.currentAPR().call();
-                const apr = Number(currentAPR) / 100;
-                let totalPWR = 0;
-                let totalPLP = 0;
-
-                for (let stakeId = 0; stakeId < 1000; stakeId++) {
-                    try {
-                        const stake = await contract.methods.getStakeDetails(stakeId).call();
-                        if (stake.owner && stake.owner !== "0x0000000000000000000000000000000000000000" && !stake.claimed) {
-                            totalPWR += Number(web3.utils.fromWei(stake.spwrAmount, 'ether'));
-                            totalPLP += Number(web3.utils.fromWei(stake.plpAmount, 'ether'));
-                        }
-                    } catch (error) {
-                        if (error.message.includes("revert")) break;
-                    }
-                }
-
-                tbody.innerHTML = '';
-                for (let day = 0; day <= 20; day += 5) {
-                    const pwrGrowth = totalPWR * (1 + (apr / 365 * day));
-                    const plsValue = pwrGrowth * 100; // 1 PWR = 100 PLS assumption
-                    const gains = plsValue - (totalPWR * 100);
-
-                    const row = document.createElement('tr');
-                    row.innerHTML = `
-                        <td>${day}</td>
-                        <td>${pwrGrowth.toFixed(2)}</td>
-                        <td>${totalPLP.toFixed(2)}</td>
-                        <td>${plsValue.toFixed(2)}</td>
-                        <td>${gains.toFixed(2)}</td>
-                    `;
-                    tbody.appendChild(row);
-                }
-            } catch (error) {
-                tbody.innerHTML = '<tr><td colspan="5" class="no-data">Error loading growth data</td></tr>';
-                console.error("Growth table error:", error);
-            }
-        }
-
-        async function initPriceChart() {
-            try {
-                const ctx = document.getElementById('pwrPriceChart');
-                if (!ctx) throw new Error("Chart canvas not found");
-
-                if (priceChart) {
-                    priceChart.destroy();
-                }
-
-                const labels = ['Day 1', 'Day 2', 'Day 3', 'Day 4', 'Day 5', 'Day 6', 'Day 7'];
-                const prices = [0.04, 0.045, 0.042, 0.05, 0.048, 0.052, 0.05];
-
-                priceChart = new Chart(ctx, {
-                    type: 'line',
-                    data: {
-                        labels: labels,
-                        datasets: [{
-                            label: 'PWR Price (USD)',
-                            data: prices,
-                            borderColor: '#ffdd00',
-                            backgroundColor: 'rgba(255, 221, 0, 0.2)',
-                            fill: true,
-                            tension: 0.1
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        scales: {
-                            x: { title: { display: true, text: 'Time', color: '#ffdd00' } },
-                            y: { 
-                                title: { display: true, text: 'Price (USD)', color: '#ffdd00' },
-                                beginAtZero: false,
-                                suggestedMin: 0.03,
-                                suggestedMax: 0.06
-                            }
-                        },
-                        plugins: {
-                            legend: { labels: { color: '#ffdd00' } }
-                        }
-                    }
-                });
-            } catch (error) {
-                console.error("Chart initialization error:", error);
-                document.getElementById('pwrPriceChart').style.display = 'none';
-            }
+            await updateAllStakesTable();
         }
 
         function formatTimeRemaining(seconds) {
@@ -299,16 +166,94 @@
             const days = Math.floor(seconds / (24 * 60 * 60));
             const hours = Math.floor((seconds % (24 * 60 * 60)) / (60 * 60));
             const minutes = Math.floor((seconds % (60 * 60)) / 60);
-            return `${days}d ${hours}h ${minutes}m`;
+            const secs = Math.floor(seconds % 60);
+            return `${days}d ${hours}h ${minutes}m ${secs}s`;
         }
 
-        function updateStatus(message, isError = false) {
-            const statusDiv = document.getElementById('status');
-            statusDiv.textContent = `Status: ${message}`;
-            statusDiv.className = `status ${isError ? 'error' : 'success'}`;
+        async function updateAllStakesTable() {
+            console.log("Updating all stakes table...");
+            if (!contract) {
+                document.getElementById('allStakesTable').innerHTML = '<tr><td colspan="8" class="no-data">Contract not initialized</td></tr>';
+                console.log("Contract not available");
+                return;
+            }
+
+            try {
+                const tbody = document.getElementById('allStakesTable');
+                tbody.innerHTML = '';
+
+                // Obtener todos los usuarios que tienen stakes (esto puede requerir un rango de direcciones o un método específico del contrato para listar todos los stakes)
+                // Para simplificar, vamos a iterar sobre un rango de stake IDs (esto puede no ser eficiente en un contrato real, pero es un ejemplo)
+                let stakeId = 0;
+                const stakes = [];
+                while (true) {
+                    try {
+                        const stake = await contract.methods.getStakeDetails(stakeId).call();
+                        if (stake.owner === "0x0000000000000000000000000000000000000000") break; // Si no hay propietario, asumimos que no hay más stakes
+                        if (!stake.claimed) stakes.push({ stakeId, ...stake });
+                        stakeId++;
+                    } catch (error) {
+                        break; // Si falla la llamada, asumimos que no hay más stakes
+                    }
+                }
+
+                if (stakes.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="8" class="no-data">No stakes found</td></tr>';
+                    console.log("No stakes found");
+                    return;
+                }
+
+                for (let { stakeId, owner, plpAmount, startTime, endTime, duration } of stakes) {
+                    const amount = web3.utils.fromWei(plpAmount, 'ether');
+                    const startDate = new Date(startTime * 1000).toLocaleString();
+                    const endDate = new Date(endTime * 1000).toLocaleString();
+                    const timeRemaining = Math.max(0, endTime - Math.floor(Date.now() / 1000));
+                    const periodDays = duration / (24 * 60 * 60);
+                    const bonus = {30: 0, 60: 10, 90: 20, 180: 40, 360: 80}[periodDays] || 0;
+                    const currentAPR = await contract.methods.currentAPR().call();
+                    const apr = parseInt(currentAPR) + bonus;
+                    const rewardWei = await contract.methods.calculateReward(stakeId).call();
+                    const reward = web3.utils.fromWei(rewardWei, 'ether');
+
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${stakeId}</td>
+                        <td>${owner.slice(0, 6)}...${owner.slice(-4)}</td>
+                        <td>${parseFloat(amount).toFixed(4)} PLP</td>
+                        <td>${startDate}</td>
+                        <td>${endDate}</td>
+                        <td><span class="timer" id="timer-${stakeId}">${formatTimeRemaining(timeRemaining)}</span></td>
+                        <td>${apr}%</td>
+                        <td>${parseFloat(reward).toFixed(4)} PWR</td>
+                    `;
+                    tbody.appendChild(row);
+
+                    if (timeRemaining > 0) {
+                        const timerInterval = setInterval(() => {
+                            const remaining = Math.max(0, endTime - Math.floor(Date.now() / 1000));
+                            const timerElement = document.getElementById(`timer-${stakeId}`);
+                            if (timerElement) {
+                                timerElement.innerText = formatTimeRemaining(remaining);
+                                if (remaining <= 0) {
+                                    clearInterval(timerInterval);
+                                    updateAllStakesTable();
+                                }
+                            } else {
+                                clearInterval(timerInterval);
+                            }
+                        }, 1000);
+                    }
+                }
+                console.log("All stakes table updated successfully");
+            } catch (error) {
+                console.error("All stakes table error:", error);
+                document.getElementById('allStakesTable').innerHTML = '<tr><td colspan="8" class="no-data">Error loading stakes</td></tr>';
+            }
         }
 
-        window.addEventListener('load', init);
+        window.onload = function() {
+            init();
+        };
     </script>
 </body>
 </html>
