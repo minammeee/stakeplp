@@ -297,14 +297,15 @@
             font-size: 16px; 
         }
         .logo { 
-            position: absolute; 
-            top: 10px; 
-            right: 10px; 
+            position: relative; /* Changed from absolute to relative for better visibility */
+            display: block;
             width: 80px; 
             height: 80px; 
             border-radius: 50%; 
             box-shadow: 0 0 10px rgba(255, 221, 0, 0.5); 
             transition: transform 0.3s ease; 
+            z-index: 10; /* Increased z-index to ensure visibility */
+            margin: 10px auto; /* Centered logo for better placement */
         }
         .logo:hover { 
             transform: scale(1.05); 
@@ -413,7 +414,7 @@
             .footer-buttons { flex-direction: column; gap: 10px; }
             .footer-buttons button { font-size: 12px; padding: 8px 12px; }
             .footer-buttons button i { font-size: 14px; }
-            .logo { width: 60px; height: 60px; top: 5px; right: 5px; }
+            .logo { width: 60px; height: 60px; margin: 5px auto; }
             .price-section { padding: 10px; }
             .price-section p { font-size: 12px; }
             #whyInvestModal .modal-content {
@@ -426,7 +427,7 @@
 <body>
     <div id="particles-js"></div>
     <div class="container">
-        <img src="https://i.imgur.com/JgCuL0a.png" alt="Power Coin Logo" class="logo">
+        <img src="https://i.imgur.com/JgCuL0a.png" alt="Power Coin Logo" class="logo" onerror="console.error('Failed to load logo'); this.style.display='none';">
         <h1>Power Stake</h1>
         <div class="button-group">
             <button id="connectWallet" aria-label="Connect your wallet to interact with the application">Connect Wallet</button>
