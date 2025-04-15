@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PowerStake</title>
+    <title>Power Stake</title>
     <!-- Favicon estándar -->
     <link rel="icon" type="image/x-icon" href="/favicon.ico">
     <!-- Favicon en formato PNG -->
@@ -426,8 +426,8 @@
 <body>
     <div id="particles-js"></div>
     <div class="container">
-        <img src="https://i.imgur.com/OuzTlvu.png" alt="Power Coin Logo" class="logo">
-        <h1>PowerStake</h1>
+        <img src="https://i.imgur.com/JgCuL0a.png" alt="Power Coin Logo" class="logo">
+        <h1>Power Stake</h1>
         <div class="button-group">
             <button id="connectWallet" aria-label="Connect your wallet to interact with the application">Connect Wallet</button>
             <button class="chart-btn" onclick="window.open('https://dexscreener.com/pulsechain/0xe5c56E4a8f8d96e3A91b18D83b7f0c36663C9a74', '_blank')" aria-label="View PWR chart on DexScreener">View PWR Chart</button>
@@ -443,7 +443,7 @@
             </div>
             <div>
                 <h2>PLP Balance</h2>
-                <p>Available Balance: <span id="plpBalance">0</span> PLP ($<span id="plpBalanceUsd">0</span>)</p>
+                <p>Available Balance: <span id="plpBalance">0</span> PLP</p>
             </div>
             <div>
                 <h2>SPWR (Staked PLP)</h2>
@@ -828,10 +828,8 @@
             try {
                 const balanceWei = await plpContract.methods.balanceOf(account).call();
                 const balance = parseFloat(web3.utils.fromWei(balanceWei, 'ether'));
-                const balanceUsd = (balance * 0.10).toFixed(2); // Fallback PLP price
                 document.getElementById('plpBalance').innerText = balance.toFixed(4);
-                document.getElementById('plpBalanceUsd').innerText = balanceUsd;
-                console.log("PLP balance:", balance, "USD:", balanceUsd);
+                console.log("PLP balance:", balance);
             } catch (error) {
                 console.error("PLP balance error:", error);
                 updateStatus("Error loading PLP balance", true);
