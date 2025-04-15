@@ -27,37 +27,152 @@
             padding: 20px;
             min-height: 100vh;
             color: #ffffff;
-            /* Fondo animado con gradiente */
-            background: linear-gradient(135deg, #0f0f0f, #1a1a1a, #2a2a2a, #1a1a1a, #0f0f0f);
-            background-size: 400%;
-            animation: gradientAnimation 15s ease infinite;
+            /* Fondo base oscuro para contraste */
+            background: #0f0f0f;
+            position: relative;
+            overflow-x: hidden;
         }
-        /* Animación del gradiente */
-        @keyframes gradientAnimation {
-            0% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
-            100% { background-position: 0% 50%; }
+        /* Contenedor para partículas */
+        #particles-js {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1; /* Detrás del contenido */
         }
-        .container { max-width: 1000px; margin: 0 auto; background: #1a1a1a; padding: 20px; border-radius: 15px; box-shadow: 0 0 20px rgba(255, 221, 0, 0.4); position: relative; }
-        h1 { text-align: center; color: #ffdd00; margin-bottom: 10px; font-weight: 700; font-size: 28px; letter-spacing: 2px; text-transform: uppercase; }
-        h2 { color: #ffdd00; font-weight: 600; margin-top: 20px; font-size: 20px; text-transform: uppercase; }
-        button { padding: 10px 20px; background: #ffdd00; color: #000000; border: none; border-radius: 8px; cursor: pointer; margin: 5px; transition: all 0.3s ease; font-weight: 600; font-size: 14px; }
-        button:hover { background: #ffea4d; box-shadow: 0 0 15px rgba(255, 221, 0, 0.7); transform: translateY(-2px); }
-        button:disabled { background: #666; cursor: not-allowed; box-shadow: none; transform: none; }
-        .input-group { margin: 10px 0; display: flex; flex-direction: column; align-items: center; }
-        label { font-size: 14px; color: #d0d0d0; margin-bottom: 5px; }
-        input, select { padding: 8px; margin: 5px 0; border: 2px solid #ffdd00; border-radius: 8px; width: 100%; max-width: 220px; background: #2a2a2a; color: #ffffff; outline: none; transition: all 0.3s ease; font-size: 14px; }
-        input:focus, select:focus { border-color: #ffea4d; box-shadow: 0 0 10px rgba(255, 221, 0, 0.5); }
-        input:invalid:not(:placeholder-shown) { border-color: #ff4d4d; }
-        .status { margin-top: 15px; padding: 10px; border-radius: 8px; background: #151515; font-size: 14px; text-align: center; border: 1px solid transparent; }
-        .error { color: #ff4d4d; border-color: #ff4d4d; }
-        .success { color: #00cc99; border-color: #00cc99; }
-        table { width: 100%; border-collapse: collapse; margin-top: 15px; background: #151515; border-radius: 8px; overflow: hidden; }
-        th, td { padding: 10px; border: 1px solid #ffdd00; text-align: center; font-size: 12px; }
-        th { background: #ffdd00; color: #000000; font-weight: 600; }
-        td { color: #d0d0d0; }
-        .stake-section { background: linear-gradient(135deg, #252525 0%, #1a1a1a 100%); padding: 20px; border-radius: 15px; margin: 20px 0; box-shadow: 0 0 20px rgba(255, 221, 0, 0.3); text-align: center; border: 2px solid #ffdd00; }
-        .stake-section h2 { margin-bottom: 15px; }
+        .container { 
+            max-width: 1000px; 
+            margin: 0 auto; 
+            background: rgba(26, 26, 26, 0.85); /* Fondo ligeramente transparente para que las partículas sean visibles */
+            padding: 20px; 
+            border-radius: 15px; 
+            box-shadow: 0 0 20px rgba(255, 221, 0, 0.4); 
+            position: relative; 
+            backdrop-filter: blur(5px); /* Efecto de desenfoque para un toque moderno */
+        }
+        h1 { 
+            text-align: center; 
+            color: #ffdd00; 
+            margin-bottom: 10px; 
+            font-weight: 700; 
+            font-size: 28px; 
+            letter-spacing: 2px; 
+            text-transform: uppercase; 
+            text-shadow: 0 0 10px rgba(255, 221, 0, 0.7); /* Sombra para destacar */
+        }
+        h2 { 
+            color: #ffdd00; 
+            font-weight: 600; 
+            margin-top: 20px; 
+            font-size: 20px; 
+            text-transform: uppercase; 
+        }
+        button { 
+            padding: 10px 20px; 
+            background: #ffdd00; 
+            color: #000000; 
+            border: none; 
+            border-radius: 8px; 
+            cursor: pointer; 
+            margin: 5px; 
+            transition: all 0.3s ease; 
+            font-weight: 600; 
+            font-size: 14px; 
+        }
+        button:hover { 
+            background: #ffea4d; 
+            box-shadow: 0 0 15px rgba(255, 221, 0, 0.7); 
+            transform: translateY(-2px); 
+        }
+        button:disabled { 
+            background: #666; 
+            cursor: not-allowed; 
+            box-shadow: none; 
+            transform: none; 
+        }
+        .input-group { 
+            margin: 10px 0; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+        }
+        label { 
+            font-size: 14px; 
+            color: #d0d0d0; 
+            margin-bottom: 5px; 
+        }
+        input, select { 
+            padding: 8px; 
+            margin: 5px 0; 
+            border: 2px solid #ffdd00; 
+            border-radius: 8px; 
+            width: 100%; 
+            max-width: 220px; 
+            background: #2a2a2a; 
+            color: #ffffff; 
+            outline: none; 
+            transition: all 0.3s ease; 
+            font-size: 14px; 
+        }
+        input:focus, select:focus { 
+            border-color: #ffea4d; 
+            box-shadow: 0 0 10px rgba(255, 221, 0, 0.5); 
+        }
+        input:invalid:not(:placeholder-shown) { 
+            border-color: #ff4d4d; 
+        }
+        .status { 
+            margin-top: 15px; 
+            padding: 10px; 
+            border-radius: 8px; 
+            background: #151515; 
+            font-size: 14px; 
+            text-align: center; 
+            border: 1px solid transparent; 
+        }
+        .error { 
+            color: #ff4d4d; 
+            border-color: #ff4d4d; 
+        }
+        .success { 
+            color: #00cc99; 
+            border-color: #00cc99; 
+        }
+        table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            margin-top: 15px; 
+            background: #151515; 
+            border-radius: 8px; 
+            overflow: hidden; 
+        }
+        th, td { 
+            padding: 10px; 
+            border: 1px solid #ffdd00; 
+            text-align: center; 
+            font-size: 12px; 
+        }
+        th { 
+            background: #ffdd00; 
+            color: #000000; 
+            font-weight: 600; 
+        }
+        td { 
+            color: #d0d0d0; 
+        }
+        .stake-section { 
+            background: linear-gradient(135deg, #252525 0%, #1a1a1a 100%); 
+            padding: 20px; 
+            border-radius: 15px; 
+            margin: 20px 0; 
+            box-shadow: 0 0 20px rgba(255, 221, 0, 0.3); 
+            text-align: center; 
+            border: 2px solid #ffdd00; 
+        }
+        .stake-section h2 { 
+            margin-bottom: 15px; 
+        }
         .yield-box { 
             display: grid; 
             grid-template-columns: repeat(2, 1fr); 
@@ -69,19 +184,85 @@
             border: 2px solid #ffdd00; 
             box-shadow: 0 0 15px rgba(255, 221, 0, 0.2); 
         }
-        .yield-box div { background: #2a2a2a; padding: 15px; border-radius: 8px; box-shadow: 0 0 10px rgba(255, 221, 0, 0.4); transition: transform 0.3s ease, background 0.3s ease; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-        .yield-box div:hover { transform: scale(1.05); background: #333; }
-        .yield-box p { margin: 0 0 8px 0; font-size: 12px; color: #d0d0d0; display: flex; align-items: center; gap: 5px; }
-        .yield-box span { color: #ffdd00; font-size: 16px; font-weight: 700; }
-        .yield-box .icon { font-size: 16px; color: #ffdd00; }
-        .price-section { display: flex; flex-wrap: wrap; justify-content: space-between; background: #151515; padding: 15px; border-radius: 8px; margin: 15px 0; border: 1px solid #ffdd00; gap: 10px; }
-        .price-section p { margin: 5px 0; font-size: 14px; }
-        .price-section span { color: #ffdd00; font-weight: 600; }
-        .timer { color: #00cc99; font-size: 10px; }
-        .no-data { text-align: center; padding: 15px; color: #d0d0d0; font-style: italic; }
-        .button-group { display: flex; justify-content: center; align-items: center; gap: 15px; margin-bottom: 20px; }
-        .chart-btn { padding: 8px 15px; font-size: 12px; }
-        .view-stakes-btn { display: flex; justify-content: center; gap: 10px; margin: 20px auto; text-align: center; }
+        .yield-box div { 
+            background: #2a2a2a; 
+            padding: 15px; 
+            border-radius: 8px; 
+            box-shadow: 0 0 10px rgba(255, 221, 0, 0.4); 
+            transition: transform 0.3s ease, background 0.3s ease; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center; 
+        }
+        .yield-box div:hover { 
+            transform: scale(1.05); 
+            background: #333; 
+        }
+        .yield-box p { 
+            margin: 0 0 8px 0; 
+            font-size: 12px; 
+            color: #d0d0d0; 
+            display: flex; 
+            align-items: center; 
+            gap: 5px; 
+        }
+        .yield-box span { 
+            color: #ffdd00; 
+            font-size: 16px; 
+            font-weight: 700; 
+        }
+        .yield-box .icon { 
+            font-size: 16px; 
+            color: #ffdd00; 
+        }
+        .price-section { 
+            display: flex; 
+            flex-wrap: wrap; 
+            justify-content: space-between; 
+            background: #151515; 
+            padding: 15px; 
+            border-radius: 8px; 
+            margin: 15px 0; 
+            border: 1px solid #ffdd00; 
+            gap: 10px; 
+        }
+        .price-section p { 
+            margin: 5px 0; 
+            font-size: 14px; 
+        }
+        .price-section span { 
+            color: #ffdd00; 
+            font-weight: 600; 
+        }
+        .timer { 
+            color: #00cc99; 
+            font-size: 10px; 
+        }
+        .no-data { 
+            text-align: center; 
+            padding: 15px; 
+            color: #d0d0d0; 
+            font-style: italic; 
+        }
+        .button-group { 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            gap: 15px; 
+            margin-bottom: 20px; 
+        }
+        .chart-btn { 
+            padding: 8px 15px; 
+            font-size: 12px; 
+        }
+        .view-stakes-btn { 
+            display: flex; 
+            justify-content: center; 
+            gap: 10px; 
+            margin: 20px auto; 
+            text-align: center; 
+        }
         .footer-buttons { 
             display: flex; 
             justify-content: center; 
@@ -109,13 +290,58 @@
             box-shadow: 0 0 10px rgba(255, 221, 0, 0.5); 
             transition: transform 0.3s ease; 
         }
-        .logo:hover { transform: scale(1.05); }
-        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.8); z-index: 1000; }
-        .modal-content { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #1a1a1a; padding: 20px; border-radius: 15px; box-shadow: 0 0 20px rgba(255, 221, 0, 0.4); text-align: center; max-width: 300px; width: 100%; }
-        .modal-content h3 { color: #ffdd00; margin-bottom: 20px; }
-        .wallet-option { display: block; width: 100%; margin: 10px 0; padding: 10px; background: #ffdd00; color: #000; border: none; border-radius: 8px; cursor: pointer; }
-        .wallet-option:hover { background: #ffea4d; }
-        .close-modal { position: absolute; top: 10px; right: 10px; color: #ffdd00; font-size: 20px; cursor: pointer; }
+        .logo:hover { 
+            transform: scale(1.05); 
+        }
+        .modal { 
+            display: none; 
+            position: fixed; 
+            top: 0; 
+            left: 0; 
+            width: 100%; 
+            height: 100%; 
+            background: rgba(0, 0, 0, 0.8); 
+            z-index: 1000; 
+        }
+        .modal-content { 
+            position: absolute; 
+            top: 50%; 
+            left: 50%; 
+            transform: translate(-50%, -50%); 
+            background: #1a1a1a; 
+            padding: 20px; 
+            border-radius: 15px; 
+            box-shadow: 0 0 20px rgba(255, 221, 0, 0.4); 
+            text-align: center; 
+            max-width: 300px; 
+            width: 100%; 
+        }
+        .modal-content h3 { 
+            color: #ffdd00; 
+            margin-bottom: 20px; 
+        }
+        .wallet-option { 
+            display: block; 
+            width: 100%; 
+            margin: 10px 0; 
+            padding: 10px; 
+            background: #ffdd00; 
+            color: #000; 
+            border: none; 
+            border-radius: 8px; 
+            cursor: pointer; 
+        }
+        .wallet-option:hover { 
+            background: #ffea4d; 
+        }
+        .close-modal { 
+            position: absolute; 
+            top: 10px; 
+            right: 10px; 
+            color: #ffdd00; 
+            font-size: 20px; 
+            cursor: pointer; 
+        }
         @media (max-width: 600px) {
             .container { padding: 15px; }
             h1 { font-size: 24px; }
@@ -135,6 +361,8 @@
     </style>
 </head>
 <body>
+    <!-- Contenedor para las partículas -->
+    <div id="particles-js"></div>
     <div class="container">
         <img src="https://i.imgur.com/OuzTlvu.png" alt="Power Coin Logo" class="logo">
         <h1>PowerStake</h1>
@@ -235,7 +463,100 @@
             <div id="walletOptions"></div>
         </div>
     </div>
+    <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/web3@1.7.4/dist/web3.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/particles.js@2.0.0/particles.min.js"></script>
+    <script>
+        // Configuración de particles.js
+        particlesJS('particles-js', {
+            particles: {
+                number: {
+                    value: 80,
+                    density: {
+                        enable: true,
+                        value_area: 800
+                    }
+                },
+                color: {
+                    value: '#ffdd00' // Color amarillo para coincidir con el tema
+                },
+                shape: {
+                    type: 'circle',
+                    stroke: {
+                        width: 0,
+                        color: '#000000'
+                    }
+                },
+                opacity: {
+                    value: 0.5,
+                    random: true,
+                    anim: {
+                        enable: true,
+                        speed: 1,
+                        opacity_min: 0.1,
+                        sync: false
+                    }
+                },
+                size: {
+                    value: 3,
+                    random: true,
+                    anim: {
+                        enable: true,
+                        speed: 2,
+                        size_min: 0.1,
+                        sync: false
+                    }
+                },
+                line_linked: {
+                    enable: true,
+                    distance: 150,
+                    color: '#ffdd00',
+                    opacity: 0.3,
+                    width: 1
+                },
+                move: {
+                    enable: true,
+                    speed: 2,
+                    direction: 'none',
+                    random: true,
+                    straight: false,
+                    out_mode: 'out',
+                    bounce: false,
+                    attract: {
+                        enable: false,
+                        rotateX: 600,
+                        rotateY: 1200
+                    }
+                }
+            },
+            interactivity: {
+                detect_on: 'canvas',
+                events: {
+                    onhover: {
+                        enable: true,
+                        mode: 'grab'
+                    },
+                    onclick: {
+                        enable: true,
+                        mode: 'push'
+                    },
+                    resize: true
+                },
+                modes: {
+                    grab: {
+                        distance: 200,
+                        line_linked: {
+                            opacity: 0.5
+                        }
+                    },
+                    push: {
+                        particles_nb: 4
+                    }
+                }
+            },
+            retina_detect: true
+        });
+    </script>
     <script>
         const contractAddressRaw = "0x619aBD3Ab24C8a8a13f15E6DAaa2c31D02267184";
         const plpAddressRaw = "0xe5c56e4a8f8d96e3A91b18D83b7f0c36663C9a74";
