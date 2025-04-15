@@ -5,14 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PowerStake</title>
 
-    <!-- Favicons (asegurarse de que estén en el repositorio) -->
-    <link rel="icon" type="image/x-icon" href="/stakebonus-/img/favicon.ico">
-    <link rel="icon" type="image/png" sizes="16x16" href="/stakebonus-/img/favicon-16x16.png">
-    <link rel="icon" type="image/png" sizes="32x32" href="/stakebonus-/img/favicon-32x32.png">
-    <link rel="apple-touch-icon" sizes="180x180" href="/stakebonus-/img/apple-touch-icon.png">
-    <link rel="manifest" href="/stakebonus-/img/site.webmanifest">
-    <meta name="theme-color" content="#ffffff">
-
     <!-- FontAwesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
 
@@ -183,7 +175,6 @@
                         <th>End</th>
                         <th>Time Remaining</th>
                         <th>APR</th>
-                        <th>Profit (PWR)</th>
                         <th>Action</th>
                     </tr>
                 </thead>
@@ -226,8 +217,18 @@
         const pwrAddressRaw = "0x3Eb3B7b3D95Cb3699295D7868F85e43b56AeeFcB";
         const DESIRED_NETWORK_ID = 369;
 
+        // Dirección del par de liquidez PLP/PLS en PulseX
+        const plpPlsPairAddress = "0x95b0525e8a7edba121418976353c6f596f4a4d7"; // Dirección del par PLP/PLS (confirmar)
+
         let contractAddress, plpAddress, pwrAddress;
         let web3, account, contract, plpContract, pwrPriceUsd = 0, plpPriceUsd = 0, spwrAddress, selectedProvider;
+
+        // ABI del par de liquidez de PulseX (Uniswap V2)
+        const pairABI = [
+            {"constant":true,"inputs":[],"name":"getReserves","outputs":[{"internalType":"uint112","name":"_reserve0","type":"uint112"},{"internalType":"uint112","name":"_reserve1","type":"uint112"},{"internalType":"uint32","name":"_blockTimestampLast","type":"uint32"}],"payable":false,"stateMutability":"view","type":"function"},
+            {"constant":true,"inputs":[],"name":"token0","outputs":[{"internalType":"address","name":"","type":"address"}],"payable":false,"stateMutability":"view","type":"function"},
+            {"constant":true,"inputs":[],"name":"token1","outputs":[{"internalType":"address","name":"","type":"address"}],"payable":false,"stateMutability":"view","type":"function"}
+        ];
 
         const powerStakeABI = [
             {"inputs":[],"stateMutability":"nonpayable","type":"constructor"},
@@ -387,6 +388,53 @@
             }
         }
 
+        // Función para obtener el precio de PLP desde el par de liquidez
+        async function getPriceFromPair(pairAddress, tokenAddress) {
+            try {
+                const pairContract = new web3.eth.Contract(pairABI, pairAddress);
+                const reserves = await pairContract.methods.getReserves().call();
+                const token0 = await pairContract.methods.token0().call();
+                const token1 = await pairContract.methods.token1().call();
+
+                // Determinar cuál es el token y cuál es PLS
+                const isToken0 = token0.toLowerCase() === tokenAddress.toLowerCase();
+                const reserveToken = isToken0 ? reserves._reserve0 : reserves._reserve1;
+                const reservePLS = isToken0 ? reserves._reserve1 : reserves._reserve0;
+
+                // Evitar división por cero
+                if (parseFloat(reserveToken) === 0) {
+                    throw new Error("Reserve of token is zero");
+                }
+
+                // Calcular precio en PLS (reservePLS / reserveToken)
+                const priceInPLS = parseFloat(reservePLS) / parseFloat(reserveToken);
+
+                // Obtener precio de PLS en USD
+                const plsPriceUsd = await getPLSPriceInUSD();
+
+                // Calcular precio en USD
+                const priceInUsd = priceInPLS * plsPriceUsd;
+                return priceInUsd;
+            } catch (error) {
+                console.error("Error fetching price from pair:", error);
+                throw error;
+            }
+        }
+
+        // Función para obtener el precio de PLS en USD
+        async function getPLSPriceInUSD() {
+            try {
+                const response = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=pulsechain&vs_currencies=usd');
+                const data = await response.json();
+                const price = data.pulsechain?.usd || 0.0001; // Valor por defecto si falla
+                return price;
+            } catch (error) {
+                console.error("Error fetching PLS price:", error);
+                return 0.0001; // Valor por defecto (aproximado)
+            }
+        }
+
+        // Función para obtener el precio de PWR desde DexScreener
         async function fetchPriceFromDexScreener(tokenAddress) {
             try {
                 console.log(`Fetching price for token: ${tokenAddress}`);
@@ -398,7 +446,7 @@
                     throw new Error("No trading pairs found");
                 }
 
-                // Seleccionar el par con mayor liquidez (baseToken/quoteToken)
+                // Seleccionar el par con mayor liquidez
                 const pair = data.pairs.reduce((best, current) => {
                     const currentLiquidity = parseFloat(current.liquidity?.usd || 0);
                     const bestLiquidity = parseFloat(best.liquidity?.usd || 0);
@@ -418,67 +466,52 @@
             }
         }
 
-        async function fetchPriceFromCoinGecko(tokenAddress) {
-            try {
-                console.log(`Fetching price from CoinGecko for token: ${tokenAddress}`);
-                // Nota: CoinGecko requiere un ID de token, no una dirección. Para PulseChain, necesitamos mapear las direcciones a IDs.
-                // Esto es un ejemplo, necesitarás los IDs correctos de CoinGecko para PLP y PWR.
-                const tokenIdMap = {
-                    [plpAddressRaw.toLowerCase()]: "pulse-lp", // Reemplaza con el ID real de CoinGecko para PLP
-                    [pwrAddressRaw.toLowerCase()]: "power-coin" // Reemplaza con el ID real de CoinGecko para PWR
-                };
-
-                const tokenId = tokenIdMap[tokenAddress.toLowerCase()];
-                if (!tokenId) {
-                    throw new Error("Token ID not mapped for CoinGecko");
-                }
-
-                const response = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${tokenId}&vs_currencies=usd`);
-                const data = await response.json();
-                console.log(`CoinGecko response for ${tokenAddress}:`, data);
-
-                const priceUsd = parseFloat(data[tokenId]?.usd);
-                if (isNaN(priceUsd) || priceUsd <= 0) {
-                    throw new Error("Invalid price returned from CoinGecko");
-                }
-
-                console.log(`Price for ${tokenAddress} from CoinGecko: $${priceUsd}`);
-                return priceUsd;
-            } catch (error) {
-                console.error(`Error fetching price from CoinGecko for ${tokenAddress}:`, error);
-                throw error;
-            }
+        // Función para obtener el precio directamente del contrato de PLP (si estuviera disponible)
+        async function getPriceFromPLPContract() {
+            // Nota: El ABI proporcionado es del par de liquidez, no del token PLP en sí.
+            // No hay un método directo como `getPrice()` en el contrato del par.
+            // Seguimos usando el método del par de liquidez (getPriceFromPair).
+            return 0;
         }
 
         async function updateTokenPrices() {
             try {
                 console.log("Fetching token prices...");
 
-                // Intentar con DexScreener primero
+                // Obtener precio de PLP
                 try {
-                    plpPriceUsd = await fetchPriceFromDexScreener(plpAddressRaw);
+                    // Intentar obtener el precio desde el contrato de PLP (si tuviera un método directo)
+                    plpPriceUsd = await getPriceFromPLPContract();
+                    if (plpPriceUsd === 0) {
+                        // Si no hay método directo, usar el par de liquidez
+                        plpPriceUsd = await getPriceFromPair(plpPlsPairAddress, plpAddressRaw);
+                    }
                     document.getElementById('plpPrice').innerText = plpPriceUsd.toFixed(4);
+                    console.log("PLP Price in USD:", plpPriceUsd);
                 } catch (error) {
-                    console.warn("Falling back to CoinGecko for PLP price...");
-                    plpPriceUsd = await fetchPriceFromCoinGecko(plpAddressRaw);
-                    document.getElementById('plpPrice').innerText = plpPriceUsd.toFixed(4);
+                    console.error("Failed to fetch PLP price:", error);
+                    plpPriceUsd = 0.10; // Valor por defecto
+                    document.getElementById('plpPrice').innerText = "0.10";
+                    updateStatus("Error loading PLP price", true);
                 }
 
+                // Obtener precio de PWR desde DexScreener
                 try {
                     pwrPriceUsd = await fetchPriceFromDexScreener(pwrAddressRaw);
                     document.getElementById('pwrPrice').innerText = pwrPriceUsd.toFixed(4);
+                    console.log("PWR Price in USD:", pwrPriceUsd);
                 } catch (error) {
-                    console.warn("Falling back to CoinGecko for PWR price...");
-                    pwrPriceUsd = await fetchPriceFromCoinGecko(pwrAddressRaw);
-                    document.getElementById('pwrPrice').innerText = pwrPriceUsd.toFixed(4);
+                    console.error("Failed to fetch PWR price from DexScreener:", error);
+                    pwrPriceUsd = 0.05; // Valor por defecto
+                    document.getElementById('pwrPrice').innerText = "0.05";
+                    updateStatus("Error loading PWR price", true);
                 }
 
+                // Actualizar cálculos derivados
                 updateYieldEstimate();
                 if (account) await updatePLPBalance();
             } catch (error) {
                 console.error("Price fetch error:", error);
-                document.getElementById('plpPrice').innerText = "Error";
-                document.getElementById('pwrPrice').innerText = "Error";
                 updateStatus("Error loading prices: " + error.message, true);
             }
         }
@@ -559,10 +592,10 @@
             if (!account || !plpContract) return;
             try {
                 const balanceWei = await plpContract.methods.balanceOf(account).call();
-                const balance = web3.utils.fromWei(balanceWei, 'ether');
-                const balanceUsd = (parseFloat(balance) * plpPriceUsd).toFixed(2);
-                document.getElementById('plpBalance').innerText = parseFloat(balance).toFixed(4);
-                document.getElementById('plpBalanceUsd').innerText = balanceUsd;
+                const balance = parseFloat(web3.utils.fromWei(balanceWei, 'ether'));
+                const balanceUsd = (balance * plpPriceUsd).toFixed(2);
+                document.getElementById('plpBalance').innerText = balance.toFixed(4);
+                document.getElementById('plpBalanceUsd').innerText = isNaN(balanceUsd) ? "0.00" : balanceUsd;
                 console.log("PLP balance:", balance, "USD:", balanceUsd);
             } catch (error) {
                 console.error("PLP balance error:", error);
@@ -615,7 +648,7 @@
         async function updateStakesTable() {
             console.log("Updating stakes table...");
             if (!account || !contract) {
-                document.getElementById('stakesTable').innerHTML = '<tr><td colspan="8" class="no-data">Connect your wallet to view your stakes</td></tr>';
+                document.getElementById('stakesTable').innerHTML = '<tr><td colspan="7" class="no-data">Connect your wallet to view your stakes</td></tr>';
                 console.log("No account or contract available");
                 return;
             }
@@ -626,7 +659,7 @@
                 tbody.innerHTML = '';
 
                 if (stakeIds.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="8" class="no-data">No active stakes</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="7" class="no-data">No active stakes</td></tr>';
                     console.log("No stakes found");
                     return;
                 }
@@ -643,8 +676,6 @@
                     const bonus = {30: 0, 60: 10, 90: 20, 180: 40, 360: 80}[periodDays] || 0;
                     const currentAPR = await contract.methods.currentAPR().call();
                     const apr = parseInt(currentAPR) + bonus;
-                    const rewardWei = await contract.methods.calculateReward(stakeId).call();
-                    const reward = web3.utils.fromWei(rewardWei, 'ether');
 
                     const row = document.createElement('tr');
                     row.innerHTML = `
@@ -654,7 +685,6 @@
                         <td>${endDate}</td>
                         <td><span class="timer" id="timer-${stakeId}">${formatTimeRemaining(timeRemaining)}</span></td>
                         <td>${apr}%</td>
-                        <td>${parseFloat(reward).toFixed(4)} PWR</td>
                         <td>
                             ${timeRemaining > 0 
                                 ? `<button onclick="earlyWithdraw(${stakeId})">Early Withdraw</button>`
