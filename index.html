@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Power Stake</title>
-    <!-- Favicon placeholders (replace with actual paths) -->
+    <!-- Favicon placeholders (replace with actual paths or remove) -->
     <link rel="icon" type="image/x-icon" href="/favicon.ico">
     <link rel="icon" type="image/png" href="/favicon-96x96.png">
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
@@ -443,7 +443,7 @@
 <body>
     <div id="particles-js"></div>
     <div class="container">
-        <!-- Replace with your actual logo URL -->
+        <!-- Replace with your actual logo URL or remove -->
         <img src="https://via.placeholder.com/80" alt="Power Coin Logo" class="logo" onerror="console.error('Failed to load logo'); this.style.display='none';">
         <h1>Power Stake</h1>
         <div class="button-group">
@@ -579,7 +579,7 @@
         });
 
         // Contract configuration
-        const contractAddressRaw = "0x619aBD3Ab24C8a8a13f15E6DAaa2c31D02267184";
+        const contractAddressRaw = "0x619aBD3Ab24C8a8a13f15E6DAaa2c31D02267184"; // Replace if different
         const plpAddressRaw = "0xe5c56E4a8f8d96e3A91b18D83b7f0c36663C9a74";
         const pwrAddressRaw = "0x3Eb3B7b3D95Cb3699295D7868F85e43b56AeeFcB";
         const DESIRED_NETWORK_ID = 369;
@@ -596,15 +596,20 @@
             {"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"user","type":"address"},{"indexed":false,"internalType":"uint256","name":"stakeId","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"plpAmount","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"rewardAmount","type":"uint256"}],"name":"StakeWithdrawn","type":"event"},
             {"inputs":[],"name":"TOTAL_REWARDS","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
             {"inputs":[{"internalType":"uint256","name":"amount","type":"uint256"}],"name":"approvePLP","outputs":[],"stateMutability":"nonpayable","type":"function"},
-            {"inputs":[{"internalType":"uint256","name":"stakeId","type":"uint256"}],"name":"calculateReward","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+            {"inputs":[{"internalType":"uint256","name":"stakeId","type":"uint256"}],"name":"calculateReward","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"nonpayable","type":"function"},
             {"inputs":[{"internalType":"uint256","name":"stakeId","type":"uint256"}],"name":"claimRewards","outputs":[],"stateMutability":"nonpayable","type":"function"},
             {"inputs":[{"internalType":"uint256","name":"plpAmount","type":"uint256"},{"internalType":"uint256","name":"duration","type":"uint256"}],"name":"createStake","outputs":[],"stateMutability":"nonpayable","type":"function"},
             {"inputs":[],"name":"currentAPR","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
             {"inputs":[{"internalType":"uint256","name":"stakeId","type":"uint256"}],"name":"earlyWithdrawStake","outputs":[],"stateMutability":"nonpayable","type":"function"},
             {"inputs":[{"internalType":"uint256","name":"stakeId","type":"uint256"}],"name":"getStakeDetails","outputs":[{"components":[{"internalType":"address","name":"owner","type":"address"},{"internalType":"uint256","name":"plpAmount","type":"uint256"},{"internalType":"uint256","name":"spwrAmount","type":"uint256"},{"internalType":"uint256","name":"startTime","type":"uint256"},{"internalType":"uint256","name":"duration","type":"uint256"},{"internalType":"uint256","name":"endTime","type":"uint256"},{"internalType":"uint256","name":"rewardAmount","type":"uint256"},{"internalType":"uint256","name":"lastUpdate","type":"uint256"},{"internalType":"bool","name":"claimed","type":"bool"}],"internalType":"struct PowerStake.Stake","name":"","type":"tuple"}],"stateMutability":"view","type":"function"},
             {"inputs":[{"internalType":"address","name":"user","type":"address"}],"name":"getUserStakes","outputs":[{"internalType":"uint256[]","name":"","type":"uint256[]"}],"stateMutability":"view","type":"function"},
+            {"inputs":[],"name":"owner","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},
+            {"inputs":[{"internalType":"uint256","name":"","type":"uint256"}],"name":"periodBonuses","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
             {"inputs":[],"name":"rewardsDistributed","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+            {"inputs":[{"internalType":"uint256","name":"","type":"uint256"}],"name":"stakes","outputs":[{"internalType":"address","name":"owner","type":"address"},{"internalType":"uint256","name":"plpAmount","type":"uint256"},{"internalType":"uint256","name":"spwrAmount","type":"uint256"},{"internalType":"uint256","name":"startTime","type":"uint256"},{"internalType":"uint256","name":"duration","type":"uint256"},{"internalType":"uint256","name":"endTime","type":"uint256"},{"internalType":"uint256","name":"rewardAmount","type":"uint256"},{"internalType":"uint256","name":"lastUpdate","type":"uint256"},{"internalType":"bool","name":"claimed","type":"bool"}],"stateMutability":"view","type":"function"},
             {"inputs":[],"name":"spwrToken","outputs":[{"internalType":"contract SPWRToken","name":"","type":"address"}],"stateMutability":"view","type":"function"},
+            {"inputs":[],"name":"updateStakes","outputs":[],"stateMutability":"nonpayable","type":"function"},
+            {"inputs":[{"internalType":"address","name":"","type":"address"},{"internalType":"uint256","name":"","type":"uint256"}],"name":"userStakes","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
             {"inputs":[{"internalType":"uint256","name":"stakeId","type":"uint256"}],"name":"withdrawStake","outputs":[],"stateMutability":"nonpayable","type":"function"}
         ];
 
@@ -678,6 +683,8 @@
                 await updatePLPBalance();
                 await updatePWRBalance();
                 await updateSPWRBalance();
+                await updateTotalRewards();
+                await updateAPRYield();
                 await updateStakesTable();
                 provider.on('accountsChanged', handleAccountsChanged);
                 provider.on('chainChanged', () => window.location.reload());
@@ -701,6 +708,8 @@
                 updatePLPBalance();
                 updatePWRBalance();
                 updateSPWRBalance();
+                updateTotalRewards();
+                updateAPRYield();
                 updateStakesTable();
             }
         }
@@ -783,6 +792,33 @@
             }
         }
 
+        async function updateTotalRewards() {
+            try {
+                if (!contract) return;
+                const totalRewards = await contract.methods.TOTAL_REWARDS().call();
+                const rewardsDistributed = await contract.methods.rewardsDistributed().call();
+                const rewardsLeft = BigInt(totalRewards) - BigInt(rewardsDistributed);
+                const rewardsLeftPWR = web3.utils.fromWei(rewardsLeft.toString(), 'ether');
+                document.getElementById('totalRewards').innerText = parseFloat(rewardsLeftPWR).toFixed(2);
+            } catch (error) {
+                console.error("Update total rewards error:", error);
+                updateStatus(`Error fetching total rewards: ${error.message}`, true);
+            }
+        }
+
+        async function updateAPRYield() {
+            try {
+                if (!contract) return;
+                const apr = await contract.methods.currentAPR().call();
+                document.getElementById('aprYield').innerText = `${apr}%`;
+                // Total yield calculation (simplified, as actual yield depends on stake duration)
+                document.getElementById('totalYield').innerText = `${apr}%`; // Adjust if needed
+            } catch (error) {
+                console.error("Update APR yield error:", error);
+                updateStatus(`Error fetching APR: ${error.message}`, true);
+            }
+        }
+
         async function stakePLP() {
             if (isProcessing) return;
             isProcessing = true;
@@ -792,10 +828,11 @@
             try {
                 if (!contract || !plpContract || !account) throw new Error("Wallet or contracts not initialized.");
                 const amount = document.getElementById('stakeAmount').value;
-                const duration = document.getElementById('stakePeriod').value;
+                const durationDays = document.getElementById('stakePeriod').value;
                 if (!amount || amount <= 0) throw new Error("Please enter a valid PLP amount.");
-                if (!duration) throw new Error("Please select a staking period.");
+                if (!durationDays) throw new Error("Please select a staking period.");
                 const amountWei = web3.utils.toWei(amount, 'ether');
+                const durationSeconds = Number(durationDays) * 24 * 60 * 60; // Convert days to seconds
                 const balance = await plpContract.methods.balanceOf(account).call();
                 if (BigInt(balance) < BigInt(amountWei)) throw new Error("Insufficient PLP balance.");
                 const allowance = await plpContract.methods.allowance(account, contractAddress).call();
@@ -806,19 +843,41 @@
                     updateStatus("PLP approved successfully!", false);
                 }
                 updateStatus("Creating stake...", false);
-                const stakeGas = await contract.methods.createStake(amountWei, Number(duration) * 24 * 60 * 60).estimateGas({ from: account });
-                await contract.methods.createStake(amountWei, Number(duration) * 24 * 60 * 60).send({ from: account, gas: Math.ceil(stakeGas * 2.0) });
+                const stakeGas = await contract.methods.createStake(amountWei, durationSeconds).estimateGas({ from: account });
+                const tx = await contract.methods.createStake(amountWei, durationSeconds).send({ from: account, gas: Math.ceil(stakeGas * 2.0) });
+                console.log(`Stake tx: https://scan.pulsechain.com/tx/${tx.transactionHash}`);
                 updateStatus("Stake created successfully, SPWR received!", false);
                 triggerConfetti();
                 await updatePLPBalance();
                 await updatePWRBalance();
                 await updateSPWRBalance();
+                await updateTotalRewards();
                 await updateStakesTable();
                 document.getElementById('stakeAmount').value = '';
                 document.getElementById('stakePeriod').value = '';
             } catch (error) {
                 console.error("Stake PLP error:", error);
-                updateStatus(`Stake failed: ${error.message}`, true);
+                let errorMessage = error.message;
+                if (error.code === 4001) {
+                    errorMessage = "Transaction rejected by user.";
+                } else if (error.data) {
+                    try {
+                        const txHash = error.transactionHash;
+                        if (txHash) {
+                            const receipt = await web3.eth.getTransactionReceipt(txHash);
+                            if (receipt && receipt.status === false) {
+                                try {
+                                    await contract.methods.createStake(web3.utils.toWei("1", "ether"), 30 * 24 * 60 * 60).call({ from: account });
+                                } catch (callError) {
+                                    errorMessage = callError.message.includes("revert") ? callError.message.split("revert ")[1] : `Transaction reverted. Check logs at https://scan.pulsechain.com/tx/${txHash}`;
+                                }
+                            }
+                        }
+                    } catch (receiptError) {
+                        console.error("Error fetching receipt:", receiptError);
+                    }
+                }
+                updateStatus(`Stake failed: ${errorMessage}`, true);
             } finally {
                 stakeButton.disabled = false;
                 stakeButton.classList.remove('loading');
@@ -867,6 +926,7 @@
                 await updatePLPBalance();
                 await updatePWRBalance();
                 await updateSPWRBalance();
+                await updateTotalRewards();
                 await updateStakesTable();
             } catch (error) {
                 console.error(`Claim error for stake ${stakeId}:`, error);
@@ -879,7 +939,6 @@
                         if (txHash) {
                             const receipt = await web3.eth.getTransactionReceipt(txHash);
                             if (receipt && receipt.status === false) {
-                                // Attempt to get revert reason
                                 try {
                                     await contract.methods.withdrawStake(stakeId).call({ from: account });
                                 } catch (callError) {
@@ -930,6 +989,7 @@
                 await updatePLPBalance();
                 await updatePWRBalance();
                 await updateSPWRBalance();
+                await updateTotalRewards();
                 await updateStakesTable();
             } catch (error) {
                 console.error(`Early withdraw error for stake ${stakeId}:`, error);
@@ -942,7 +1002,6 @@
                         if (txHash) {
                             const receipt = await web3.eth.getTransactionReceipt(txHash);
                             if (receipt && receipt.status === false) {
-                                // Attempt to get revert reason
                                 try {
                                     await contract.methods.earlyWithdrawStake(stakeId).call({ from: account });
                                 } catch (callError) {
@@ -980,12 +1039,21 @@
                     if (stakeDetails.claimed) continue;
                     const plpAmount = web3.utils.fromWei(stakeDetails.plpAmount, 'ether');
                     // Fetch updated reward amount
-                    const rewardAmountWei = await contract.methods.calculateReward(stakeId).call();
+                    let rewardAmountWei = stakeDetails.rewardAmount;
+                    try {
+                        await contract.methods.calculateReward(stakeId).send({ from: account });
+                        const updatedStakeDetails = await contract.methods.getStakeDetails(stakeId).call();
+                        rewardAmountWei = updatedStakeDetails.rewardAmount;
+                    } catch (error) {
+                        console.warn(`Failed to update reward for stake ${stakeId}:`, error);
+                    }
                     const rewardAmount = web3.utils.fromWei(rewardAmountWei, 'ether');
                     const startTime = new Date(Number(stakeDetails.startTime) * 1000).toLocaleDateString();
                     const endTime = new Date(Number(stakeDetails.endTime) * 1000).toLocaleDateString();
                     const timeRemaining = Number(stakeDetails.endTime) - Math.floor(Date.now() / 1000);
-                    const apr = await contract.methods.currentAPR().call() / 100;
+                    const apr = await contract.methods.currentAPR().call();
+                    const bonus = await contract.methods.periodBonuses(stakeDetails.duration).call();
+                    const totalAPR = Number(apr) + Number(bonus);
                     const isCompleted = timeRemaining <= 0;
                     const isPastClaimWindow = isCompleted && (Math.floor(Date.now() / 1000) > Number(stakeDetails.endTime) + CLAIM_WINDOW);
                     const row = document.createElement('tr');
@@ -996,7 +1064,7 @@
                         <td>${startTime}</td>
                         <td>${endTime}</td>
                         <td class="timer" id="timer-${stakeId}">${formatTimeRemaining(timeRemaining)}</td>
-                        <td>${apr}%</td>
+                        <td>${totalAPR}%</td>
                         <td>
                             ${isCompleted ? `<button class="claim-all-btn" id="claim-${stakeId}" onclick="claimAll(${stakeId})">Claim All</button>` : `<button id="withdraw-${stakeId}" onclick="earlyWithdraw(${stakeId})">Early Withdraw</button>`}
                             ${isPastClaimWindow ? '<div class="warning">Past 30-day claim window for rewards</div>' : ''}
@@ -1040,7 +1108,7 @@
                 <h2>Why Stake PLP is Better</h2>
                 <p>Staking PLP with PowerStake offers unparalleled benefits:</p>
                 <ul>
-                    <li><strong>High APR:</strong> Earn up to 50% APR with flexible staking periods.</li>
+                    <li><strong>High APR:</strong> Earn up to 50% APR with bonuses up to 80% for longer periods.</li>
                     <li><strong>SPWR Tokens:</strong> Receive SPWR upon staking, which is surrendered when claiming rewards.</li>
                     <li><strong>Secure Platform:</strong> Built on PulseChain for fast, low-cost transactions.</li>
                     <li><strong>Community Driven:</strong> Join a vibrant community on <a href="https://t.me/+fM8oDk6HssdlNmVh" target="_blank">Telegram</a> and <a href="https://twitter.com/powercoinpwr" target="_blank">X</a>.</li>
