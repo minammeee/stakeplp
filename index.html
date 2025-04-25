@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -768,8 +768,9 @@
                 const amountWei = web3.utils.toWei(amount, 'ether');
                 const durationSeconds = parseInt(periodDays) * 24 * 60 * 60;
                 const balanceWei = await plpContract.methods.balanceOf(account).call();
-                const balance = web3.utils.fromWei(balanceWei, 'ether');
-                if (parseFloat(balance) < parseFloat(amount)) throw new Error(`Insufficient PLP balance: ${balance} PLP`);
+                if (web3.utils.toBN(balanceWei).lt(web3.utils.toBN(amountWei))) {
+                    throw new Error("Insufficient PLP balance");
+                }
                 const allowanceWei = await plpContract.methods.allowance(account, contractAddress).call();
                 if (web3.utils.toBN(allowanceWei).lt(web3.utils.toBN(amountWei))) {
                     updateStatus("Approving PLP...");
@@ -1006,9 +1007,20 @@
 
         async function claimAll(stakeId) {
             try {
-                updateStatus("Processing PLP withdrawal and PWR rewards...", false);
-                const withdrawTx = await withdraw(stakeId);
+                // Obtener detalles del stake
+                const stake = await contract.methods.getStakeDetails(stakeId).call();
+                if (stake.claimed) {
+                    updateStatus("Stake already claimed", true);
+                    return;
+                }
+                if (stake.endTime > Math.floor(Date.now() / 1000)) {
+                    updateStatus("Stake period not yet finished", true);
+                    return;
+                }
+                updateStatus("Claiming PWR rewards...", false);
                 const claimTx = await claimRewards(stakeId);
+                updateStatus("PWR rewards claimed. Withdrawing PLP...", false);
+                const withdrawTx = await withdraw(stakeId);
                 confetti({
                     particleCount: 120,
                     spread: 80,
@@ -1016,7 +1028,7 @@
                     colors: ['#ffdd00', '#00cc99', '#ffffff'],
                     zIndex: 9999
                 });
-                updateStatus(`PLP withdrawn and PWR rewards claimed (Tx: ${claimTx.transactionHash.slice(0, 6)}...)`, false);
+                updateStatus(`PLP withdrawn and PWR rewards claimed (Tx: ${withdrawTx.transactionHash.slice(0, 6)}...)`, false);
                 await updatePLPBalance();
                 await updateSPWRBalance();
                 await updateStakesTable();
