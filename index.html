@@ -4,22 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Power Stake</title>
-    <!-- Favicon estándar -->
     <link rel="icon" type="image/x-icon" href="/favicon.ico">
-    <!-- Favicon en formato PNG -->
     <link rel="icon" type="image/png" href="/favicon-96x96.png">
-    <!-- Favicon en formato SVG -->
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
-    <!-- Para dispositivos Apple -->
     <link rel="apple-touch-icon" href="/apple-touch-icon.png">
-    <!-- Para aplicaciones web progresivas (PWA) -->
     <link rel="manifest" href="/site.webmanifest">
-    <!-- Iconos adicionales para PWA en diferentes tamaños -->
     <link rel="icon" type="image/png" href="/web-app-manifest-192x192.png">
     <link rel="icon" type="image/png" href="/web-app-manifest-512x512.png">
-    <!-- FontAwesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
-    <!-- Canvas Confetti -->
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <style>
         * { box-sizing: border-box; }
@@ -533,7 +525,6 @@
             </button>
         </div>
     </div>
-    <!-- Modal para wallets -->
     <div id="walletModal" class="modal">
         <div class="modal-content">
             <span class="close-modal" onclick="closeWalletModal()">×</span>
@@ -541,18 +532,15 @@
             <div id="walletOptions"></div>
         </div>
     </div>
-    <!-- Modal para Why Invest -->
     <div id="whyInvestModal" class="modal">
         <div class="modal-content">
             <span class="close-modal" onclick="closeWhyInvestModal()">×</span>
             <div id="whyInvestContent"></div>
         </div>
     </div>
-    <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/web3@1.7.4/dist/web3.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/particles.js@2.0.0/particles.min.js"></script>
     <script>
-        // Configuración de particles.js
         particlesJS('particles-js', {
             particles: {
                 number: { value: 80, density: { enable: true, value_area: 800 } },
@@ -693,6 +681,12 @@
                 plpContract = new web3.eth.Contract(erc20ABI, plpAddress);
                 spwrAddress = await contract.methods.spwrToken().call();
                 console.log("Contracts initialized:", { contractAddress, plpAddress, spwrAddress });
+                try {
+                    await contract.methods.TOTAL_REWARDS().call();
+                    console.log("Contract is responsive");
+                } catch (error) {
+                    throw new Error("Contract not responsive. Possible ABI mismatch or deployment issue. Check ABI on PulseScan: https://scan.pulsechain.com/address/0x619aBD3Ab24C8a8a13f15E6DAaa2c31D02267184");
+                }
             } catch (error) {
                 console.error("Initialize contracts error:", error);
                 updateStatus("Error initializing contracts: " + error.message, true);
@@ -794,7 +788,7 @@
                     const gasEstimate = await plpContract.methods.approve(contractAddress, amountWei).estimateGas({ from: account });
                     const approvalTx = await plpContract.methods.approve(contractAddress, amountWei).send({
                         from: account,
-                        gas: Math.floor(gasEstimate * 1.5),
+                        gas: Math.floor(gasEstimate * 1.8),
                         gasPrice
                     });
                     updateStatus(`PLP Approved (Tx: ${approvalTx.transactionHash.slice(0, 6)}...)`, false);
@@ -805,7 +799,7 @@
                 const stakeGasEstimate = await contract.methods.createStake(amountWei, durationSeconds).estimateGas({ from: account });
                 const stakeTx = await contract.methods.createStake(amountWei, durationSeconds).send({
                     from: account,
-                    gas: Math.floor(stakeGasEstimate * 1.5),
+                    gas: Math.floor(stakeGasEstimate * 1.8),
                     gasPrice: gasPriceStake
                 });
                 updateStatus(`Stake created (Tx: ${stakeTx.transactionHash.slice(0, 6)}...)`, false);
@@ -974,25 +968,26 @@
 
         async function claimRewards(stakeId) {
             try {
-                // Verificar detalles del stake
+                console.log(`Claiming rewards for stake ${stakeId}...`);
+                if (!account || !contract) throw new Error("Wallet or contract not initialized");
                 const stake = await contract.methods.getStakeDetails(stakeId).call();
-                if (stake.claimed) {
-                    updateStatus("Stake already claimed", true);
-                    return;
-                }
-                if (stake.endTime > Math.floor(Date.now() / 1000)) {
-                    updateStatus("Stake period not yet finished", true);
-                    return;
-                }
-                updateStatus("Claiming PWR rewards...", false);
+                console.log(`Stake ${stakeId} details:`, stake);
+                if (stake.claimed) throw new Error("Stake already claimed");
+                if (stake.endTime > Math.floor(Date.now() / 1000)) throw new Error("Stake period not yet finished");
+                updateStatus(`Claiming PWR rewards for stake ${stakeId}...`, false);
                 const gasPrice = await web3.eth.getGasPrice();
-                const gasEstimate = await contract.methods.claimRewards(stakeId).estimateGas({ from: account });
+                let gasEstimate;
+                try {
+                    gasEstimate = await contract.methods.claimRewards(stakeId).estimateGas({ from: account });
+                } catch (error) {
+                    throw new Error("Gas estimation failed: " + error.message);
+                }
                 const tx = await contract.methods.claimRewards(stakeId).send({
                     from: account,
-                    gas: Math.floor(gasEstimate * 1.5),
+                    gas: Math.floor(gasEstimate * 1.8),
                     gasPrice
                 });
-                updateStatus(`PWR rewards claimed (Tx: ${tx.transactionHash.slice(0, 6)}...)`, false);
+                updateStatus(`PWR rewards claimed for stake ${stakeId} (Tx: ${tx.transactionHash.slice(0, 6)}...)`, false);
                 confetti({
                     particleCount: 120,
                     spread: 80,
@@ -1005,32 +1000,33 @@
                 await updateStakesTable();
                 await updateTotalRewards();
             } catch (error) {
-                console.error("Claim rewards error:", error);
-                updateStatus(`Claim rewards failed: ${error.message}`, true);
+                console.error(`Claim rewards error for stake ${stakeId}:`, error);
+                updateStatus(`Claim rewards failed for stake ${stakeId}: ${error.message}`, true);
             }
         }
 
         async function withdrawStake(stakeId) {
             try {
-                // Verificar detalles del stake
+                console.log(`Withdrawing stake ${stakeId}...`);
+                if (!account || !contract) throw new Error("Wallet or contract not initialized");
                 const stake = await contract.methods.getStakeDetails(stakeId).call();
-                if (stake.claimed) {
-                    updateStatus("Stake already claimed", true);
-                    return;
-                }
-                if (stake.endTime > Math.floor(Date.now() / 1000)) {
-                    updateStatus("Stake period not yet finished", true);
-                    return;
-                }
-                updateStatus("Withdrawing PLP stake...", false);
+                console.log(`Stake ${stakeId} details:`, stake);
+                if (stake.claimed) throw new Error("Stake already claimed");
+                if (stake.endTime > Math.floor(Date.now() / 1000)) throw new Error("Stake period not yet finished");
+                updateStatus(`Withdrawing PLP stake ${stakeId}...`, false);
                 const gasPrice = await web3.eth.getGasPrice();
-                const gasEstimate = await contract.methods.withdrawStake(stakeId).estimateGas({ from: account });
+                let gasEstimate;
+                try {
+                    gasEstimate = await contract.methods.withdrawStake(stakeId).estimateGas({ from: account });
+                } catch (error) {
+                    throw new Error("Gas estimation failed: " + error.message);
+                }
                 const tx = await contract.methods.withdrawStake(stakeId).send({
                     from: account,
-                    gas: Math.floor(gasEstimate * 1.5),
+                    gas: Math.floor(gasEstimate * 1.8),
                     gasPrice
                 });
-                updateStatus(`PLP stake withdrawn (Tx: ${tx.transactionHash.slice(0, 6)}...)`, false);
+                updateStatus(`PLP stake withdrawn for stake ${stakeId} (Tx: ${tx.transactionHash.slice(0, 6)}...)`, false);
                 confetti({
                     particleCount: 120,
                     spread: 80,
@@ -1043,45 +1039,47 @@
                 await updateStakesTable();
                 await updateTotalRewards();
             } catch (error) {
-                console.error("Withdraw stake error:", error);
-                updateStatus(`Withdraw stake failed: ${error.message}`, true);
+                console.error(`Withdraw stake error for stake ${stakeId}:`, error);
+                updateStatus(`Withdraw stake failed for stake ${stakeId}: ${error.message}`, true);
             }
         }
 
         async function claimAll(stakeId) {
             try {
-                // Verificar detalles del stake
+                console.log(`Claiming all for stake ${stakeId}...`);
+                if (!account || !contract) throw new Error("Wallet or contract not initialized");
                 const stake = await contract.methods.getStakeDetails(stakeId).call();
-                if (stake.claimed) {
-                    updateStatus("Stake already claimed", true);
-                    return;
-                }
-                if (stake.endTime > Math.floor(Date.now() / 1000)) {
-                    updateStatus("Stake period not yet finished", true);
-                    return;
-                }
-                // Reclamar recompensas primero
+                console.log(`Stake ${stakeId} details:`, stake);
+                if (stake.claimed) throw new Error("Stake already claimed");
+                if (stake.endTime > Math.floor(Date.now() / 1000)) throw new Error("Stake period not yet finished");
+                updateStatus(`Claiming rewards and withdrawing stake ${stakeId}...`, false);
                 await claimRewards(stakeId);
-                // Retirar stake después
                 await withdrawStake(stakeId);
-                updateStatus("All actions completed successfully!", false);
+                updateStatus(`All actions completed for stake ${stakeId}!`, false);
             } catch (error) {
-                console.error("Claim all error:", error);
-                updateStatus(`Claim all failed: ${error.message}`, true);
+                console.error(`Claim all error for stake ${stakeId}:`, error);
+                updateStatus(`Claim all failed for stake ${stakeId}: ${error.message}`, true);
             }
         }
 
         async function earlyWithdraw(stakeId) {
             try {
-                updateStatus("Processing early withdrawal...", false);
+                console.log(`Early withdrawing stake ${stakeId}...`);
+                if (!account || !contract) throw new Error("Wallet or contract not initialized");
+                updateStatus(`Processing early withdrawal for stake ${stakeId}...`, false);
                 const gasPrice = await web3.eth.getGasPrice();
-                const gasEstimate = await contract.methods.earlyWithdrawStake(stakeId).estimateGas({ from: account });
+                let gasEstimate;
+                try {
+                    gasEstimate = await contract.methods.earlyWithdrawStake(stakeId).estimateGas({ from: account });
+                } catch (error) {
+                    throw new Error("Gas estimation failed: " + error.message);
+                }
                 const tx = await contract.methods.earlyWithdrawStake(stakeId).send({
                     from: account,
-                    gas: Math.floor(gasEstimate * 1.5),
+                    gas: Math.floor(gasEstimate * 1.8),
                     gasPrice
                 });
-                updateStatus(`Early withdrawal completed (Tx: ${tx.transactionHash.slice(0, 6)}...)`, false);
+                updateStatus(`Early withdrawal completed for stake ${stakeId} (Tx: ${tx.transactionHash.slice(0, 6)}...)`, false);
                 confetti({
                     particleCount: 120,
                     spread: 80,
@@ -1094,8 +1092,8 @@
                 await updateStakesTable();
                 await updateTotalRewards();
             } catch (error) {
-                console.error("Early withdraw error:", error);
-                updateStatus(`Early withdraw failed: ${error.message}`, true);
+                console.error(`Early withdraw error for stake ${stakeId}:`, error);
+                updateStatus(`Early withdraw failed for stake ${stakeId}: ${error.message}`, true);
             }
         }
 
