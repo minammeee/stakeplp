@@ -94,6 +94,14 @@
             background: linear-gradient(135deg, #ffea4d, #00e6b3);
             box-shadow: 0 0 15px rgba(0, 204, 153, 0.7);
         }
+        .burn-spwr-btn {
+            background: linear-gradient(135deg, #ff4d4d, #ffdd00);
+            color: #000;
+        }
+        .burn-spwr-btn:hover {
+            background: linear-gradient(135deg, #ff6666, #ffea4d);
+            box-shadow: 0 0 15px rgba(255, 77, 77, 0.7);
+        }
         .input-group { 
             margin: 10px 0; 
             display: flex; 
@@ -325,6 +333,7 @@
             border-radius: 15px; 
             box-shadow: 0 0 20px rgba(255, 221, 0, 0.4); 
             text-align: center; 
+*log
             max-width: 300px; 
             width: 100%; 
         }
@@ -445,6 +454,8 @@
                 <h2>SPWR (Staked PLP)</h2>
                 <p>Your SPWR: <span id="spwrBalance">0</span> SPWR</p>
                 <p>Total Rewards Left: <span id="totalRewards">2,500,000</span> PWR</p>
+                <!-- NEW: Button to burn SPWR -->
+                <button id="burnSPWRButton" class="burn-spwr-btn" disabled onclick="burnSPWR()" aria-label="Burn SPWR to receive PLP and PWR">Burn SPWR</button>
             </div>
         </div>
         <div class="stake-section">
@@ -557,7 +568,7 @@
         const pwrAddressRaw = "0x3Eb3B7b3D95Cb3699295D7868F85e43b56AeeFcB";
         const DESIRED_NETWORK_ID = 369;
         let contractAddress, plpAddress, pwrAddress;
-        let web3, account, contract, plpContract, pwrPriceUsd = 0, spwrAddress, selectedProvider;
+        let web3, account, contract, plpContract, spwrContract, pwrPriceUsd = 0, spwrAddress, selectedProvider;
 
         const powerStakeABI = [
             {"inputs":[],"stateMutability":"nonpayable","type":"constructor"},
@@ -572,7 +583,7 @@
             {"inputs":[{"internalType":"uint256","name":"plpAmount","type":"uint256"},{"internalType":"uint256","name":"duration","type":"uint256"}],"name":"createStake","outputs":[],"stateMutability":"nonpayable","type":"function"},
             {"inputs":[],"name":"currentAPR","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
             {"inputs":[{"internalType":"uint256","name":"stakeId","type":"uint256"}],"name":"earlyWithdrawStake","outputs":[],"stateMutability":"nonpayable","type":"function"},
-            {"inputs":[{"internalType":"uint256","name":"stakeId","type":"uint256"}],"name":"getStakeDetails","outputs":[{"components":[{"internalType":"address","name":"owner","type":"address"},{"internalType":"uint256","name":"plpAmount","type":"uint256"},{"internalType":"uint256","name":"spwrAmount","type":"uint256"},{"internalType":"uint256","name":"startTime","type":"uint256"},{"internalType":"uint CardinalType":"uint256","name":"duration","type":"uint256"},{"internalType":"uint256","name":"endTime","type":"uint256"},{"internalType":"uint256","name":"rewardAmount","type":"uint256"},{"internalType":"uint256","name":"lastUpdate","type":"uint256"},{"internalType":"bool","name":"claimed","type":"bool"}],"internalType":"struct PowerStake.Stake","name":"","type":"tuple"}],"stateMutability":"view","type":"function"},
+            {"inputs":[{"internalType":"uint256","name":"stakeId","type":"uint256"}],"name":"getStakeDetails","outputs":[{"components":[{"internalType":"address","name":"owner","type":"address"},{"internalType":"uint256","name":"plpAmount","type":"uint256"},{"internalType":"uint256","name":"spwrAmount","type":"uint256"},{"internalType":"uint256","name":"startTime","type":"uint256"},{"internalType":"uint256","name":"duration","type":"uint256"},{"internalType":"uint256","name":"endTime","type":"uint256"},{"internalType":"uint256","name":"rewardAmount","type":"uint256"},{"internalType":"uint256","name":"lastUpdate","type":"uint256"},{"internalType":"bool","name":"claimed","type":"bool"}],"internalType":"struct PowerStake.Stake","name":"","type":"tuple"}],"stateMutability":"view","type":"function"},
             {"inputs":[{"internalType":"address","name":"user","type":"address"}],"name":"getUserStakes","outputs":[{"internalType":"uint256[]","name":"","type":"uint256[]"}],"stateMutability":"view","type":"function"},
             {"inputs":[],"name":"rewardsDistributed","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
             {"inputs":[],"name":"spwrToken","outputs":[{"internalType":"contract SPWRToken","name":"","type":"address"}],"stateMutability":"view","type":"function"},
@@ -582,14 +593,16 @@
         const erc20ABI = [
             {"inputs":[{"internalType":"address","name":"account","type":"address"}],"name":"balanceOf","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
             {"inputs":[{"internalType":"address","name":"spender","type":"address"},{"internalType":"uint256","name":"amount","type":"uint256"}],"name":"approve","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},
-            {"inputs":[{"internalType":"address","name":"owner","type":"address"},{"internalType":"address","name":"spender","type":"address"}],"name":"allowance","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"}
+            {"inputs":[{"internalType":"address","name":"owner","type":"address"},{"internalType":"address","name":"spender","type":"address"}],"name":"allowance","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+            // NEW: Added burn function for SPWR
+            {"inputs":[{"internalType":"uint256","name":"amount","type":"uint256"}],"name":"burn","outputs":[],"stateMutability":"nonpayable","type":"function"}
         ];
 
         async function detectWallets() {
             console.log("Detecting wallets...");
             const providers = window.ethereum?.providers || (window.ethereum ? [window.ethereum] : []);
             const walletOptions = document.getElementById('walletOptions');
-            walletOptions.innerSUV = '';
+            walletOptions.innerHTML = '';
             if (providers.length === 0) {
                 walletOptions.innerHTML = '<p>No wallets detected. Please install MetaMask or Rabby Wallet.</p>';
                 console.error("No wallets detected");
@@ -676,7 +689,9 @@
                 contract = new web3.eth.Contract(powerStakeABI, contractAddress);
                 plpContract = new web3.eth.Contract(erc20ABI, plpAddress);
                 spwrAddress = await contract.methods.spwrToken().call();
+                spwrContract = new web3.eth.Contract(erc20ABI, spwrAddress); // NEW: Initialize SPWR contract
                 console.log("Contracts initialized:", { contractAddress, plpAddress, spwrAddress });
+                updateBurnSPWRButtonState(); // NEW: Update burn button state
             } catch (error) {
                 console.error("Initialize contracts error:", error);
                 updateStatus(`Error initializing contracts: ${error.message}. Please ensure you're on PulseChain.`, true);
@@ -708,6 +723,7 @@
                 await updatePLPBalance();
                 await updateSPWRBalance();
                 await updateStakesTable();
+                updateBurnSPWRButtonState(); // NEW: Update burn button state
             }
         }
 
@@ -778,7 +794,7 @@
                     const gasEstimate = await plpContract.methods.approve(contractAddress, amountWei).estimateGas({ from: account });
                     const approvalTx = await plpContract.methods.approve(contractAddress, amountWei).send({
                         from: account,
-                        gas: Math.ceil(gasEstimate * 1.5), // Increased buffer for reliability
+                        gas: Math.ceil(gasEstimate * 1.5),
                         gasPrice
                     });
                     updateStatus(`PLP Approved (Tx: ${approvalTx.transactionHash.slice(0, 6)}...)`, false);
@@ -806,6 +822,7 @@
                 document.getElementById('stakeAmount').value = '';
                 document.getElementById('stakePeriod').value = '';
                 updateStakeButtonState();
+                updateBurnSPWRButtonState(); // NEW: Update burn button state
             } catch (error) {
                 console.error("Stake error:", error);
                 updateStatus(`Stake failed: ${error.message}. Please check your wallet and try again.`, true);
@@ -818,6 +835,23 @@
             const isDisabled = !account || !amount || parseFloat(amount) <= 0 || !period;
             document.getElementById('stakeButton').disabled = isDisabled;
             console.log("Stake button state:", isDisabled ? "Disabled" : "Enabled");
+        }
+
+        // NEW: Function to update Burn SPWR button state
+        async function updateBurnSPWRButtonState() {
+            if (!account || !spwrContract) {
+                document.getElementById('burnSPWRButton').disabled = true;
+                return;
+            }
+            try {
+                const spwrBalanceWei = await spwrContract.methods.balanceOf(account).call();
+                const spwrBalance = parseFloat(web3.utils.fromWei(spwrBalanceWei, 'ether'));
+                document.getElementById('burnSPWRButton').disabled = spwrBalance <= 0;
+                console.log("Burn SPWR button state:", spwrBalance > 0 ? "Enabled" : "Disabled");
+            } catch (error) {
+                console.error("Burn SPWR button state error:", error);
+                document.getElementById('burnSPWRButton').disabled = true;
+            }
         }
 
         document.getElementById('stakeAmount').addEventListener('input', () => {
@@ -849,11 +883,11 @@
                 return;
             }
             try {
-                const spwrContract = new web3.eth.Contract(erc20ABI, spwrAddress);
                 const spwrBalanceWei = await spwrContract.methods.balanceOf(account).call();
                 const spwrBalance = web3.utils.fromWei(spwrBalanceWei, 'ether');
                 document.getElementById('spwrBalance').innerText = parseFloat(spwrBalance).toFixed(4);
                 console.log("SPWR balance:", spwrBalance);
+                updateBurnSPWRButtonState(); // NEW: Update burn button state
             } catch (error) {
                 console.error("SPWR balance error:", error);
                 updateStatus("Error loading SPWR balance. Please try again.", true);
@@ -1028,7 +1062,8 @@
         async function claimAll(stakeId) {
             try {
                 console.log(`Claiming all for stake ${stakeId}...`);
-                updateStatus("Processing PLP withdrawal and PWR rewards...", false);
+                updateStatus("Processing PLP withdrawal, SPWR burn, and PWR rewards...", false);
+                // NEW: Ensure SPWR is burned as part of withdrawStake
                 const withdrawTx = await withdraw(stakeId);
                 console.log(`Withdraw Tx: ${withdrawTx.transactionHash}`);
                 const claimTx = await claimRewards(stakeId);
@@ -1040,7 +1075,7 @@
                     colors: ['#ffdd00', '#00cc99', '#ffffff'],
                     zIndex: 9999
                 });
-                updateStatus(`PLP withdrawn and PWR rewards claimed successfully (Tx: ${claimTx.transactionHash.slice(0, 6)}...). Check your wallet.`, false);
+                updateStatus(`PLP withdrawn, SPWR burned, and PWR rewards claimed successfully (Tx: ${claimTx.transactionHash.slice(0, 6)}...). Check your wallet.`, false);
                 await updatePLPBalance();
                 await updateSPWRBalance();
                 await updateStakesTable();
@@ -1048,6 +1083,57 @@
             } catch (error) {
                 console.error(`Claim all error for stake ${stakeId}:`, error);
                 updateStatus(`Claim all failed: ${error.message}. Please try again.`, true);
+            }
+        }
+
+        // NEW: Function to burn SPWR and receive PLP and PWR
+        async function burnSPWR() {
+            try {
+                console.log("Initiating SPWR burn...");
+                if (!account || !spwrContract || !contract) throw new Error("Wallet or contracts not initialized. Please connect your wallet.");
+                updateStatus("Processing SPWR burn...", false);
+                const spwrBalanceWei = await spwrContract.methods.balanceOf(account).call();
+                const spwrBalance = web3.utils.fromWei(spwrBalanceWei, 'ether');
+                if (parseFloat(spwrBalance) <= 0) throw new Error("No SPWR available to burn.");
+                // NEW: Fetch all user stakes to burn associated SPWR
+                const stakeIds = await contract.methods.getUserStakes(account).call();
+                if (!stakeIds || stakeIds.length === 0) throw new Error("No active stakes found to burn SPWR.");
+                for (let stakeId of stakeIds) {
+                    const stake = await contract.methods.getStakeDetails(stakeId).call();
+                    if (stake.claimed) continue;
+                    const timeRemaining = Math.max(0, stake.endTime - Math.floor(Date.now() / 1000));
+                    if (timeRemaining > 0) {
+                        // Early withdrawal for active stakes
+                        console.log(`Early withdrawing stake ${stakeId} to burn SPWR...`);
+                        await earlyWithdraw(stakeId);
+                    } else {
+                        // Claim all for completed stakes
+                        console.log(`Claiming all for stake ${stakeId} to burn SPWR...`);
+                        await claimAll(stakeId);
+                    }
+                }
+                // NEW: Verify SPWR balance is zero after burning
+                const finalSpwrBalanceWei = await spwrContract.methods.balanceOf(account).call();
+                const finalSpwrBalance = web3.utils.fromWei(finalSpwrBalanceWei, 'ether');
+                if (parseFloat(finalSpwrBalance) > 0) {
+                    console.warn("Some SPWR remains after burning:", finalSpwrBalance);
+                    updateStatus("Warning: Not all SPWR was burned. Please try again or check your stakes.", true);
+                } else {
+                    updateStatus("SPWR burned successfully. PLP and PWR delivered to your wallet.", false);
+                    confetti({
+                        particleCount: 150,
+                        spread: 90,
+                        origin: { y: 0.6 },
+                        colors: ['#ffdd00', '#00cc99', '#ff4d4d']
+                    });
+                }
+                await updatePLPBalance();
+                await updateSPWRBalance();
+                await updateStakesTable();
+                await updateTotalRewards();
+            } catch (error) {
+                console.error("SPWR burn error:", error);
+                updateStatus(`SPWR burn failed: ${error.message}. Please try again.`, true);
             }
         }
 
