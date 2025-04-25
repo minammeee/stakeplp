@@ -228,7 +228,7 @@
             font-weight: 700; 
         }
         .yield-box .icon { 
-            font-size: 16 ..............................................................px; 
+            font-size: 16px; 
             color: #ffdd00; 
         }
         .price-section { 
@@ -290,22 +290,22 @@
             display: flex; 
             align-items: center; 
             gap: 8px; 
-            padding FUERA: 10px 15px; 
+            padding: 10px 15px; 
             font-size: 14px; 
         }
         .footer-buttons button i { 
             font-size: 16px; 
         }
         .logo { 
-            position: relative; /* Changed from absolute to relative for better visibility */
+            position: relative;
             display: block;
             width: 80px; 
             height: 80px; 
             border-radius: 50%; 
             box-shadow: 0 0 10px rgba(255, 221, 0, 0.5); 
             transition: transform 0.3s ease; 
-            z-index: 10; /* Increased z-index to ensure visibility */
-            margin: 10px auto; /* Centered logo for better placement */
+            z-index: 10;
+            margin: 10px auto;
         }
         .logo:hover { 
             transform: scale(1.05); 
@@ -368,7 +368,6 @@
             z-index: 9999;
             pointer-events: none;
         }
-        /* Estilo para el modal de Why Invest */
         #whyInvestModal .modal-content {
             max-width: 800px;
             width: 90%;
@@ -778,10 +777,10 @@
                     const gasEstimate = await plpContract.methods.approve(contractAddress, amountWei).estimateGas({ from: account });
                     const approvalTx = await plpContract.methods.approve(contractAddress, amountWei).send({
                         from: account,
-                        gas: Math.floor(gasEstimate * 1.2),
+                        gas: Math.floor(gasEstimate * 1.5),
                         gasPrice
                     });
-                    updateStatus(`PLP Approved (Tx: ${approvalTx.transactionHash.slice(0, 6)}...)`, false);
+                    updateStatus(`PLP Approved (Tx: <a href="https://scan.pulsechain.com/tx/${approvalTx.transactionHash}" target="_blank">${approvalTx.transactionHash.slice(0, 6)}...</a>)`, false);
                 }
                 updateStatus("Creating stake...");
                 console.log("Creating stake:", { amountWei, durationSeconds });
@@ -789,10 +788,10 @@
                 const stakeGasEstimate = await contract.methods.createStake(amountWei, durationSeconds).estimateGas({ from: account });
                 const stakeTx = await contract.methods.createStake(amountWei, durationSeconds).send({
                     from: account,
-                    gas: Math.floor(stakeGasEstimate * 1.2),
+                    gas: Math.floor(stakeGasEstimate * 1.5),
                     gasPrice: gasPriceStake
                 });
-                updateStatus(`Stake created (Tx: ${stakeTx.transactionHash.slice(0, 6)}...)`, false);
+                updateStatus(`Stake created (Tx: <a href="https://scan.pulsechain.com/tx/${stakeTx.transactionHash}" target="_blank">${stakeTx.transactionHash.slice(0, 6)}...</a>)`, false);
                 await updatePLPBalance();
                 await updateSPWRBalance();
                 await updateStakesTable();
@@ -958,7 +957,7 @@
                 const gasEstimate = await contract.methods.withdrawStake(stakeId).estimateGas({ from: account });
                 const tx = await contract.methods.withdrawStake(stakeId).send({
                     from: account,
-                    gas: Math.floor(gasEstimate * 1.2),
+                    gas: Math.floor(gasEstimate * 1.5),
                     gasPrice
                 });
                 return tx;
@@ -974,10 +973,10 @@
                 const gasEstimate = await contract.methods.earlyWithdrawStake(stakeId).estimateGas({ from: account });
                 const tx = await contract.methods.earlyWithdrawStake(stakeId).send({
                     from: account,
-                    gas: Math.floor(gasEstimate * 1.2),
+                    gas: Math.floor(gasEstimate * 1.5),
                     gasPrice
                 });
-                updateStatus(`Early withdrawal completed (Tx: ${tx.transactionHash.slice(0, 6)}...)`, false);
+                updateStatus(`Early withdrawal completed (Tx: <a href="https://scan.pulsechain.com/tx/${tx.transactionHash}" target="_blank">${tx.transactionHash.slice(0, 6)}...</a>)`, false);
                 await updatePLPBalance();
                 await updateSPWRBalance();
                 await updateStakesTable();
@@ -994,7 +993,7 @@
                 const gasEstimate = await contract.methods.claimRewards(stakeId).estimateGas({ from: account });
                 const tx = await contract.methods.claimRewards(stakeId).send({
                     from: account,
-                    gas: Math.floor(gasEstimate * 1.2),
+                    gas: Math.floor(gasEstimate * 1.5),
                     gasPrice
                 });
                 return tx;
@@ -1006,11 +1005,15 @@
 
         async function claimAll(stakeId) {
             try {
-                if (!account || !contract) {
-                    throw new Error("Wallet not connected or contract not initialized");
+                // Validaciones iniciales
+                if (!account) throw new Error("Wallet not connected");
+                if (!web3 || !contract) throw new Error("Contract not initialized");
+                const networkId = await web3.eth.net.getId();
+                if (Number(networkId) !== DESIRED_NETWORK_ID) {
+                    throw new Error("Please switch to PulseChain network (ID: 369)");
                 }
 
-                // Verificar si el stake está listo para ser reclamado
+                // Verificar estado del stake
                 const stake = await contract.methods.getStakeDetails(stakeId).call();
                 const timeRemaining = Math.max(0, stake.endTime - Math.floor(Date.now() / 1000));
                 if (timeRemaining > 0) {
@@ -1019,58 +1022,82 @@
                 if (stake.claimed) {
                     throw new Error("Stake already claimed.");
                 }
+                if (stake.owner.toLowerCase() !== account.toLowerCase()) {
+                    throw new Error("You are not the owner of this stake.");
+                }
 
-                // Actualizar el estado en la interfaz
-                updateStatus("Processing PLP withdrawal and PWR rewards...", false);
+                // Actualizar estado en la interfaz
+                updateStatus("Processing PLP withdrawal...", false);
 
                 // Paso 1: Retirar el stake (withdraw)
                 let withdrawTx;
-                try {
-                    const gasPriceWithdraw = await web3.eth.getGasPrice();
-                    const gasEstimateWithdraw = await contract.methods.withdrawStake(stakeId).estimateGas({ from: account });
-                    withdrawTx = await contract.methods.withdrawStake(stakeId).send({
-                        from: account,
-                        gas: Math.floor(gasEstimateWithdraw * 1.2),
-                        gasPrice: gasPriceWithdraw
-                    });
-                    console.log("Withdraw transaction successful:", withdrawTx.transactionHash);
-                } catch (error) {
-                    console.error("Withdraw transaction failed:", error);
-                    throw new Error(`Withdraw failed: ${error.message}`);
+                let attempts = 0;
+                const maxAttempts = 2;
+                while (attempts < maxAttempts) {
+                    try {
+                        const gasPriceWithdraw = await web3.eth.getGasPrice();
+                        const gasEstimateWithdraw = await contract.methods.withdrawStake(stakeId).estimateGas({ from: account });
+                        withdrawTx = await contract.methods.withdrawStake(stakeId).send({
+                            from: account,
+                            gas: Math.floor(gasEstimateWithdraw * 1.5),
+                            gasPrice: gasPriceWithdraw
+                        });
+                        console.log("Withdraw transaction successful:", withdrawTx.transactionHash);
+                        updateStatus(`PLP withdrawn (Tx: <a href="https://scan.pulsechain.com/tx/${withdrawTx.transactionHash}" target="_blank">${withdrawTx.transactionHash.slice(0, 6)}...</a>)`, false);
+                        break;
+                    } catch (error) {
+                        attempts++;
+                        console.error(`Withdraw attempt ${attempts} failed:`, error);
+                        if (attempts >= maxAttempts) {
+                            throw new Error(`Withdraw failed after ${maxAttempts} attempts: ${error.message}`);
+                        }
+                        await new Promise(resolve => setTimeout(resolve, 2000)); // Espera 2 segundos antes de reintentar
+                    }
                 }
 
                 // Paso 2: Reclamar las recompensas (claimRewards)
+                updateStatus("Processing PWR rewards...", false);
                 let claimTx;
-                try {
-                    const gasPriceClaim = await web3.eth.getGasPrice();
-                    const gasEstimateClaim = await contract.methods.claimRewards(stakeId).estimateGas({ from: account });
-                    claimTx = await contract.methods.claimRewards(stakeId).send({
-                        from: account,
-                        gas: Math.floor(gasEstimateClaim * 1.2),
-                        gasPrice: gasPriceClaim
-                    });
-                    console.log("Claim rewards transaction successful:", claimTx.transactionHash);
-                } catch (error) {
-                    console.error("Claim rewards transaction failed:", error);
-                    throw new Error(`Claim rewards failed: ${error.message}`);
+                attempts = 0;
+                while (attempts < maxAttempts) {
+                    try {
+                        const gasPriceClaim = await web3.eth.getGasPrice();
+                        const gasEstimateClaim = await contract.methods.claimRewards(stakeId).estimateGas({ from: account });
+                        claimTx = await contract.methods.claimRewards(stakeId).send({
+                            from: account,
+                            gas: Math.floor(gasEstimateClaim * 1.5),
+                            gasPrice: gasPriceClaim
+                        });
+                        console.log("Claim rewards transaction successful:", claimTx.transactionHash);
+                        updateStatus(`PWR rewards claimed (Tx: <a href="https://scan.pulsechain.com/tx/${claimTx.transactionHash}" target="_blank">${claimTx.transactionHash.slice(0, 6)}...</a>)`, false);
+                        break;
+                    } catch (error) {
+                        attempts++;
+                        console.error(`Claim rewards attempt ${attempts} failed:`, error);
+                        if (attempts >= maxAttempts) {
+                            throw new Error(`Claim rewards failed after ${maxAttempts} attempts: ${error.message}`);
+                        }
+                        await new Promise(resolve => setTimeout(resolve, 2000)); // Espera 2 segundos antes de reintentar
+                    }
                 }
 
-                // Activar el efecto de confeti solo si ambas transacciones son exitosas
+                // Activar el efecto de confeti
                 confetti({
-                    particleCount: 120,
-                    spread: 80,
+                    particleCount: 150,
+                    spread: 100,
                     origin: { y: 0.6 },
                     colors: ['#ffdd00', '#00cc99', '#ffffff'],
-                    zIndex: 9999
+                    zIndex: 9999,
+                    duration: 3000
                 });
 
-                // Actualizar el estado en la interfaz
+                // Actualizar estado final
                 updateStatus(
-                    `PLP withdrawn and PWR rewards claimed (Tx: ${claimTx.transactionHash.slice(0, 6)}...)`,
+                    `Success: PLP withdrawn and PWR rewards claimed! (Tx: <a href="https://scan.pulsechain.com/tx/${claimTx.transactionHash}" target="_blank">${claimTx.transactionHash.slice(0, 6)}...</a>)`,
                     false
                 );
 
-                // Actualizar los datos en la interfaz
+                // Actualizar datos en la interfaz
                 await Promise.all([
                     updatePLPBalance(),
                     updateSPWRBalance(),
@@ -1109,8 +1136,8 @@
 
         function updateStatus(message, isError = false) {
             const statusDiv = document.getElementById('status');
-            statusDiv.innerText = "Status: " + message;
-            statusDiv.className = "status " + (isError ? "error" : "success");
+            statusDiv.innerHTML = `Status: ${message}`;
+            statusDiv.className = `status ${isError ? 'error' : 'success'}`;
             console.log("Status updated:", message);
         }
 
@@ -1120,7 +1147,7 @@
                 const response = await fetch('https://raw.githubusercontent.com/minammeee/stakeplp/main/why-invest-pwr.html');
                 if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
                 const htmlContent = await response.text();
-                document.getElementById('的状态: 'whyInvestContent').innerHTML = htmlContent;
+                document.getElementById('whyInvestContent').innerHTML = htmlContent;
                 document.getElementById('whyInvestModal').style.display = 'block';
                 updateStatus("Why Invest content loaded", false);
                 console.log("Why Invest modal displayed");
