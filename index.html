@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Power Stake</title>
-    <!-- Favicon placeholders (replace with actual paths or remove) -->
+    <!-- Favicon placeholders -->
     <link rel="icon" type="image/x-icon" href="/favicon.ico">
     <link rel="icon" type="image/png" href="/favicon-96x96.png">
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
@@ -17,6 +17,7 @@
     <!-- Canvas Confetti -->
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <style>
+        /* Original CSS with minor additions */
         * { box-sizing: border-box; }
         body {
             font-family: 'Montserrat', Arial, sans-serif;
@@ -151,6 +152,7 @@
             font-size: 14px; 
             text-align: center; 
             border: 1px solid transparent; 
+            word-wrap: break-word; /* Added for long error messages */
         }
         .error { 
             color: #ff4d4d; 
@@ -443,7 +445,6 @@
 <body>
     <div id="particles-js"></div>
     <div class="container">
-        <!-- Replace with your actual logo URL or remove -->
         <img src="https://via.placeholder.com/80" alt="Power Coin Logo" class="logo" onerror="console.error('Failed to load logo'); this.style.display='none';">
         <h1>Power Stake</h1>
         <div class="button-group">
@@ -579,7 +580,7 @@
         });
 
         // Contract configuration
-        const contractAddressRaw = "0x619aBD3Ab24C8a8a13f15E6DAaa2c31D02267184"; // Replace if different
+        const contractAddressRaw = "0x619aBD3Ab24C8a8a13f15E6DAaa2c31D02267184";
         const plpAddressRaw = "0xe5c56E4a8f8d96e3A91b18D83b7f0c36663C9a74";
         const pwrAddressRaw = "0x3Eb3B7b3D95Cb3699295D7868F85e43b56AeeFcB";
         const DESIRED_NETWORK_ID = 369;
@@ -811,8 +812,7 @@
                 if (!contract) return;
                 const apr = await contract.methods.currentAPR().call();
                 document.getElementById('aprYield').innerText = `${apr}%`;
-                // Total yield calculation (simplified, as actual yield depends on stake duration)
-                document.getElementById('totalYield').innerText = `${apr}%`; // Adjust if needed
+                document.getElementById('totalYield').innerText = `${apr}%`;
             } catch (error) {
                 console.error("Update APR yield error:", error);
                 updateStatus(`Error fetching APR: ${error.message}`, true);
@@ -832,7 +832,7 @@
                 if (!amount || amount <= 0) throw new Error("Please enter a valid PLP amount.");
                 if (!durationDays) throw new Error("Please select a staking period.");
                 const amountWei = web3.utils.toWei(amount, 'ether');
-                const durationSeconds = Number(durationDays) * 24 * 60 * 60; // Convert days to seconds
+                const durationSeconds = Number(durationDays) * 24 * 60 * 60;
                 const balance = await plpContract.methods.balanceOf(account).call();
                 if (BigInt(balance) < BigInt(amountWei)) throw new Error("Insufficient PLP balance.");
                 const allowance = await plpContract.methods.allowance(account, contractAddress).call();
@@ -892,35 +892,98 @@
             claimButton.disabled = true;
             claimButton.classList.add('loading');
             try {
-                if (!contract || !account || !plpContract || !pwrContract || !spwrContract) throw new Error("Wallet or contracts not initialized.");
+                if (!contract || !account || !plpContract || !pwrContract || !spwrContract) {
+                    throw new Error("Wallet or contracts not initialized.");
+                }
                 const networkId = await web3.eth.net.getId();
-                if (Number(networkId) !== DESIRED_NETWORK_ID) throw new Error("Please switch to PulseChain.");
-                const stakeDetails = await contract.methods.getStakeDetails(stakeId).call();
-                console.log(`Stake ${stakeId} details:`, stakeDetails);
-                if (stakeDetails.claimed) throw new Error("Stake already withdrawn.");
-                if (BigInt(stakeDetails.endTime) > Math.floor(Date.now() / 1000)) throw new Error("Stake not yet completed.");
-                // Store initial balances for verification
+                if (Number(networkId) !== DESIRED_NETWORK_ID) {
+                    throw new Error("Please switch to PulseChain (Network ID 369).");
+                }
+
+                // Fetch stake details
+                let stakeDetails;
+                try {
+                    stakeDetails = await contract.methods.getStakeDetails(stakeId).call();
+                    console.log(`Stake ${stakeId} details:`, stakeDetails);
+                } catch (error) {
+                    throw new Error(`Stake ${stakeId} does not exist or is invalid.`);
+                }
+
+                // Validate stake
+                if (stakeDetails.owner.toLowerCase() !== account.toLowerCase()) {
+                    throw new Error("You are not the owner of this stake.");
+                }
+                if (stakeDetails.claimed) {
+                    throw new Error("Stake has already been claimed.");
+                }
+                const currentTime = Math.floor(Date.now() / 1000);
+                if (BigInt(stakeDetails.endTime) > currentTime) {
+                    throw new Error("Stake has not yet completed.");
+                }
+                const claimDeadline = Number(stakeDetails.endTime) + CLAIM_WINDOW;
+                if (currentTime > claimDeadline) {
+                    throw new Error("Claim window (30 days post-end time) has expired.");
+                }
+
+                // Check contract's PWR balance
+                const contractPWRBalance = await pwrContract.methods.balanceOf(contractAddress).call();
+                if (BigInt(contractPWRBalance) < BigInt(stakeDetails.rewardAmount)) {
+                    throw new Error("Contract has insufficient PWR for rewards. Contact the project team.");
+                }
+
+                // Update rewards before claiming
+                try {
+                    await contract.methods.calculateReward(stakeId).send({ from: account });
+                    stakeDetails = await contract.methods.getStakeDetails(stakeId).call(); // Refresh details
+                } catch (error) {
+                    console.warn(`Failed to update reward for stake ${stakeId}:`, error);
+                }
+
+                // Store initial balances
                 const initialPLP = await plpContract.methods.balanceOf(account).call();
                 const initialPWR = await pwrContract.methods.balanceOf(account).call();
                 const initialSPWR = await spwrContract.methods.balanceOf(account).call();
+
                 updateStatus(`Withdrawing stake ${stakeId} (PLP and PWR)...`, false);
-                // Call withdrawStake (returns PLP, burns SPWR, delivers PWR)
+
+                // Estimate gas with retry
                 let withdrawGas;
                 try {
                     withdrawGas = await contract.methods.withdrawStake(stakeId).estimateGas({ from: account });
                 } catch (gasError) {
-                    console.error(`Gas estimation failed for stake ${stakeId}:`, gasError);
-                    withdrawGas = 500000; // Fallback gas limit
+                    console.warn(`Gas estimation failed for stake ${stakeId}:`, gasError);
+                    withdrawGas = 600000; // Increased fallback gas limit
                 }
-                const withdrawTx = await contract.methods.withdrawStake(stakeId).send({ from: account, gas: Math.ceil(withdrawGas * 2.0) });
+
+                // Simulate transaction to catch revert reason
+                try {
+                    await contract.methods.withdrawStake(stakeId).call({ from: account });
+                } catch (callError) {
+                    let revertReason = callError.message.includes("revert") ? callError.message.split("revert ")[1] : "Unknown revert reason";
+                    throw new Error(`Simulation failed: ${revertReason}`);
+                }
+
+                // Execute transaction
+                const withdrawTx = await contract.methods.withdrawStake(stakeId).send({
+                    from: account,
+                    gas: Math.ceil(withdrawGas * 2.0)
+                });
                 console.log(`Withdraw tx: https://scan.pulsechain.com/tx/${withdrawTx.transactionHash}`);
+
                 // Verify balances
                 const finalPLP = await plpContract.methods.balanceOf(account).call();
                 const finalPWR = await pwrContract.methods.balanceOf(account).call();
                 const finalSPWR = await spwrContract.methods.balanceOf(account).call();
-                if (BigInt(finalPLP) <= BigInt(initialPLP)) throw new Error("PLP not delivered to wallet.");
-                if (BigInt(finalPWR) <= BigInt(initialPWR) && BigInt(stakeDetails.rewardAmount) > 0) throw new Error("PWR not delivered to wallet.");
-                if (BigInt(finalSPWR) >= BigInt(initialSPWR)) throw new Error("SPWR not surrendered.");
+                if (BigInt(finalPLP) <= BigInt(initialPLP)) {
+                    throw new Error("PLP not delivered to wallet.");
+                }
+                if (BigInt(finalPWR) <= BigInt(initialPWR) && BigInt(stakeDetails.rewardAmount) > 0) {
+                    throw new Error("PWR not delivered to wallet.");
+                }
+                if (BigInt(finalSPWR) >= BigInt(initialSPWR)) {
+                    throw new Error("SPWR not surrendered.");
+                }
+
                 updateStatus(`Stake ${stakeId}: SPWR surrendered, PLP and PWR delivered!`, false);
                 triggerConfetti();
                 await updatePLPBalance();
@@ -933,22 +996,10 @@
                 let errorMessage = error.message;
                 if (error.code === 4001) {
                     errorMessage = "Transaction rejected by user.";
-                } else if (error.data) {
-                    try {
-                        const txHash = error.transactionHash;
-                        if (txHash) {
-                            const receipt = await web3.eth.getTransactionReceipt(txHash);
-                            if (receipt && receipt.status === false) {
-                                try {
-                                    await contract.methods.withdrawStake(stakeId).call({ from: account });
-                                } catch (callError) {
-                                    errorMessage = callError.message.includes("revert") ? callError.message.split("revert ")[1] : `Transaction reverted. Check logs at https://scan.pulsechain.com/tx/${txHash}`;
-                                }
-                            }
-                        }
-                    } catch (receiptError) {
-                        console.error("Error fetching receipt:", receiptError);
-                    }
+                } else if (error.data && error.data.message) {
+                    errorMessage = error.data.message.includes("revert") ? error.data.message.split("revert ")[1] : error.data.message;
+                } else if (error.transactionHash) {
+                    errorMessage = `Transaction reverted. Check logs at https://scan.pulsechain.com/tx/${error.transactionHash}`;
                 }
                 updateStatus(`Claim failed for stake ${stakeId}: ${errorMessage}`, true);
             } finally {
@@ -980,7 +1031,7 @@
                     gas = await contract.methods.earlyWithdrawStake(stakeId).estimateGas({ from: account });
                 } catch (gasError) {
                     console.error(`Gas estimation failed for stake ${stakeId}:`, gasError);
-                    gas = 500000; // Fallback gas limit
+                    gas = 600000;
                 }
                 const tx = await contract.methods.earlyWithdrawStake(stakeId).send({ from: account, gas: Math.ceil(gas * 2.0) });
                 console.log(`Early withdraw tx: https://scan.pulsechain.com/tx/${tx.transactionHash}`);
@@ -1038,7 +1089,6 @@
                     const stakeDetails = await contract.methods.getStakeDetails(stakeId).call();
                     if (stakeDetails.claimed) continue;
                     const plpAmount = web3.utils.fromWei(stakeDetails.plpAmount, 'ether');
-                    // Fetch updated reward amount
                     let rewardAmountWei = stakeDetails.rewardAmount;
                     try {
                         await contract.methods.calculateReward(stakeId).send({ from: account });
@@ -1055,7 +1105,9 @@
                     const bonus = await contract.methods.periodBonuses(stakeDetails.duration).call();
                     const totalAPR = Number(apr) + Number(bonus);
                     const isCompleted = timeRemaining <= 0;
-                    const isPastClaimWindow = isCompleted && (Math.floor(Date.now() / 1000) > Number(stakeDetails.endTime) + CLAIM_WINDOW);
+                    const currentTime = Math.floor(Date.now() / 1000);
+                    const isPastClaimWindow = isCompleted && (currentTime > Number(stakeDetails.endTime) + CLAIM_WINDOW);
+                    const isClaimable = isCompleted && !isPastClaimWindow && !stakeDetails.claimed;
                     const row = document.createElement('tr');
                     row.innerHTML = `
                         <td>${stakeId}</td>
@@ -1066,8 +1118,9 @@
                         <td class="timer" id="timer-${stakeId}">${formatTimeRemaining(timeRemaining)}</td>
                         <td>${totalAPR}%</td>
                         <td>
-                            ${isCompleted ? `<button class="claim-all-btn" id="claim-${stakeId}" onclick="claimAll(${stakeId})">Claim All</button>` : `<button id="withdraw-${stakeId}" onclick="earlyWithdraw(${stakeId})">Early Withdraw</button>`}
+                            ${isCompleted ? `<button class="claim-all-btn" id="claim-${stakeId}" ${isClaimable ? '' : 'disabled'} onclick="claimAll(${stakeId})">Claim All</button>` : `<button id="withdraw-${stakeId}" onclick="earlyWithdraw(${stakeId})">Early Withdraw</button>`}
                             ${isPastClaimWindow ? '<div class="warning">Past 30-day claim window for rewards</div>' : ''}
+                            ${isCompleted && !isPastClaimWindow && stakeDetails.claimed ? '<div class="warning">Stake already claimed</div>' : ''}
                         </td>
                     `;
                     stakesTable.appendChild(row);
