@@ -977,7 +977,7 @@
                 const nonce = await web3.eth.getTransactionCount(account, 'pending');
                 const tx = await contract.methods.withdrawStake(stakeId).send({
                     from: account,
-                    gas: Math.floor(gasEstimate * 1.5),
+                    gas: Math.floor(gasEstimate * 1.6),
                     gasPrice,
                     nonce
                 });
@@ -999,7 +999,7 @@
                 const nonce = await web3.eth.getTransactionCount(account, 'pending');
                 const tx = await contract.methods.earlyWithdrawStake(stakeId).send({
                     from: account,
-                    gas: Math.floor(gasEstimate * 1.5),
+                    gas: Math.floor(gasEstimate * 1.6),
                     gasPrice,
                     nonce
                 });
@@ -1021,7 +1021,7 @@
                 const nonce = await web3.eth.getTransactionCount(account, 'pending');
                 const tx = await contract.methods.claimRewards(stakeId).send({
                     from: account,
-                    gas: Math.floor(gasEstimate * 1.5),
+                    gas: Math.floor(gasEstimate * 1.6),
                     gasPrice,
                     nonce
                 });
@@ -1121,6 +1121,14 @@
                     throw new Error(`Contract has insufficient PLP balance: ${contractPLPBalance} PLP available`);
                 }
 
+                // Verificar saldo de PWR en el contrato
+                const pwrContract = new web3.eth.Contract(erc20ABI, pwrAddress);
+                const contractPWRBalanceWei = await pwrContract.methods.balanceOf(contractAddress).call();
+                const contractPWRBalance = web3.utils.fromWei(contractPWRBalanceWei, 'ether');
+                if (parseFloat(contractPWRBalance) < parseFloat(rewardAmount)) {
+                    throw new Error(`Contract has insufficient PWR balance: ${contractPWRBalance} PWR available`);
+                }
+
                 // Verificar saldo de PLS para gas
                 const balanceWei = await web3.eth.getBalance(account);
                 const balancePLS = web3.utils.fromWei(balanceWei, 'ether');
@@ -1152,7 +1160,7 @@
                         const nonce = await web3.eth.getTransactionCount(account, 'pending');
                         withdrawTx = await contract.methods.withdrawStake(stakeId).send({
                             from: account,
-                            gas: Math.floor(gasEstimateWithdraw * 1.5),
+                            gas: Math.floor(gasEstimateWithdraw * 1.6),
                             gasPrice: gasPriceWithdraw,
                             nonce
                         });
@@ -1161,7 +1169,11 @@
                             throw new Error("Withdraw transaction failed or was reverted");
                         }
                         console.log("Withdraw transaction successful:", withdrawTx.transactionHash);
-                        updateStatus(`Withdrawn ${plpAmount} PLP (Tx: <a href="https://scan.pulsechain.com/tx/${withdrawTx.transactionHash}" target="_blank">${withdrawTx.transactionHash.slice(0, 6)}...</a>)`, false);
+                        updateStatus(
+                            `Withdrawn ${plpAmount} PLP (Tx: <a href="https://scan.pulsechain.com/tx/${withdrawTx.transactionHash}" target="_blank">${withdrawTx.transactionHash.slice(0, 6)}...</a>)`,
+                            false
+                        );
+                        await Promise.all([updatePLPBalance(), updateSPWRBalance(), updateStakesTable()]);
                         break;
                     } catch (error) {
                         attempts++;
@@ -1186,7 +1198,7 @@
                         const nonce = await web3.eth.getTransactionCount(account, 'pending');
                         claimTx = await contract.methods.claimRewards(stakeId).send({
                             from: account,
-                            gas: Math.floor(gasEstimateClaim * 1.5),
+                            gas: Math.floor(gasEstimateClaim * 1.6),
                             gasPrice: gasPriceClaim,
                             nonce
                         });
@@ -1195,7 +1207,11 @@
                             throw new Error("Claim transaction failed or was reverted");
                         }
                         console.log("Claim rewards transaction successful:", claimTx.transactionHash);
-                        updateStatus(`Claimed ${rewardAmount} PWR (Tx: <a href="https://scan.pulsechain.com/tx/${claimTx.transactionHash}" target="_blank">${claimTx.transactionHash.slice(0, 6)}...</a>)`, false);
+                        updateStatus(
+                            `Claimed ${rewardAmount} PWR (Tx: <a href="https://scan.pulsechain.com/tx/${claimTx.transactionHash}" target="_blank">${claimTx.transactionHash.slice(0, 6)}...</a>)`,
+                            false
+                        );
+                        await Promise.all([updatePLPBalance(), updateSPWRBalance(), updateStakesTable()]);
                         break;
                     } catch (error) {
                         attempts++;
@@ -1229,7 +1245,7 @@
 
                 // Actualizar estado final
                 updateStatus(
-                    `Success: Claimed ${plpAmount} PLP and ${rewardAmount} PWR! (Tx: <a href="https://scan.pulsechain.com/tx/${claimTx.transactionHash}" target="_blank">${claimTx.transactionHash.slice(0, 6)}...</a>)`,
+                    `Success: Claimed ${plpAmount} PLP and ${rewardAmount} PWR! (Withdraw Tx: <a href="https://scan.pulsechain.com/tx/${withdrawTx.transactionHash}" target="_blank">${withdrawTx.transactionHash.slice(0, 6)}...</a>, Claim Tx: <a href="https://scan.pulsechain.com/tx/${claimTx.transactionHash}" target="_blank">${claimTx.transactionHash.slice(0, 6)}...</a>)`,
                     false
                 );
 
@@ -1241,10 +1257,10 @@
                     updateTotalRewards()
                 ]);
 
-                // Limpiar mensaje de estado después de 15 segundos
+                // Limpiar mensaje de estado después de 20 segundos
                 setTimeout(() => {
                     updateStatus("Waiting for action...", false);
-                }, 15000);
+                }, 20000);
 
             } catch (error) {
                 console.error("Claim all error:", error);
@@ -1255,11 +1271,13 @@
                     errorMessage = "Nonce error. Please wait a moment and try again.";
                 } else if (errorMessage.includes("gas")) {
                     errorMessage = "Gas error. Try increasing gas limit in your wallet.";
+                } else if (errorMessage.includes("denied")) {
+                    errorMessage = "Transaction rejected by user.";
                 }
                 updateStatus(`Claim all failed: ${errorMessage}`, true);
                 setTimeout(() => {
                     updateStatus("Waiting for action...", false);
-                }, 15000);
+                }, 20000);
             }
         }
 
