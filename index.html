@@ -83,14 +83,6 @@
             box-shadow: none; 
             transform: none; 
         }
-        .claim-all-btn {
-            background: linear-gradient(135deg, #ffdd00, #00cc99);
-            color: #000;
-        }
-        .claim-all-btn:hover {
-            background: linear-gradient(135deg, #ffea4d, #00e6b3);
-            box-shadow: 0 0 15px rgba(0, 204, 153, 0.7);
-        }
         .claim-rewards-btn {
             background: #00cc99;
             color: #000;
@@ -937,7 +929,6 @@
                                 : `
                                     <button class="claim-rewards-btn" onclick="claimRewards(${stakeId})">Claim Rewards</button>
                                     <button class="withdraw-stake-btn" onclick="withdrawStake(${stakeId})">Withdraw Stake</button>
-                                    <button class="claim-all-btn" onclick="claimAll(${stakeId})">Claim All</button>
                                 `}
                         </td>
                     `;
@@ -1041,24 +1032,6 @@
             } catch (error) {
                 console.error(`Withdraw stake error for stake ${stakeId}:`, error);
                 updateStatus(`Withdraw stake failed for stake ${stakeId}: ${error.message}`, true);
-            }
-        }
-
-        async function claimAll(stakeId) {
-            try {
-                console.log(`Claiming all for stake ${stakeId}...`);
-                if (!account || !contract) throw new Error("Wallet or contract not initialized");
-                const stake = await contract.methods.getStakeDetails(stakeId).call();
-                console.log(`Stake ${stakeId} details:`, stake);
-                if (stake.claimed) throw new Error("Stake already claimed");
-                if (stake.endTime > Math.floor(Date.now() / 1000)) throw new Error("Stake period not yet finished");
-                updateStatus(`Claiming rewards and withdrawing stake ${stakeId}...`, false);
-                await claimRewards(stakeId);
-                await withdrawStake(stakeId);
-                updateStatus(`All actions completed for stake ${stakeId}!`, false);
-            } catch (error) {
-                console.error(`Claim all error for stake ${stakeId}:`, error);
-                updateStatus(`Claim all failed for stake ${stakeId}: ${error.message}`, true);
             }
         }
 
