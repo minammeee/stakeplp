@@ -917,6 +917,7 @@
                     return;
                 }
                 for (let stakeId of stakeIds) {
+                    console.log(`Processing stake ID: ${stakeId}`);
                     const stake = await contract.methods.getStakeDetails(stakeId).call();
                     console.log(`Stake ${stakeId} details:`, stake);
                     if (stake.claimed) {
@@ -945,7 +946,8 @@
                                 : `<button class="claim-all-btn" onclick="showConfirmClaimModal(${stakeId})">Claim All</button>`}
                         </td>
                     `;
-                    tbody.appendChild(row);
+ニア                    tbody.appendChild(row);
+                    console.log(`Stake ${stakeId} added to table, time remaining: ${timeRemaining}s`);
                     if (timeRemaining > 0) {
                         const timerInterval = setInterval(() => {
                             const remaining = Math.max(0, stake.endTime - Math.floor(Date.now() / 1000));
@@ -954,10 +956,12 @@
                                 timerElement.innerText = formatTimeRemaining(remaining);
                                 if (remaining <= 0) {
                                     clearInterval(timerInterval);
+                                    console.log(`Timer for stake ${stakeId} finished, updating table`);
                                     updateStakesTable();
                                 }
                             } else {
                                 clearInterval(timerInterval);
+                                console.log(`Timer element for stake ${stakeId} not found, stopping interval`);
                             }
                         }, 1000);
                     }
@@ -1058,19 +1062,30 @@
         }
 
         function showConfirmClaimModal(stakeId) {
-            pendingClaimStakeId = stakeId;
+            console.log(`Attempting to show confirm claim modal for Stake ID: ${stakeId}`);
+            if (!stakeId || isNaN(stakeId)) {
+                console.error("Invalid stakeId:", stakeId);
+                updateStatus("Error: Invalid stake ID. Please try again.", true);
+                return;
+            }
+            pendingClaimStakeId = parseInt(stakeId);
+            console.log(`pendingClaimStakeId set to: ${pendingClaimStakeId}`);
             document.getElementById('confirmStakeId').innerText = stakeId;
             contract.methods.getStakeDetails(stakeId).call().then(stake => {
+                console.log(`Fetched stake details for ID ${stakeId}:`, stake);
                 const plpAmount = parseFloat(web3.utils.fromWei(stake.plpAmount, 'ether')).toFixed(4);
                 contract.methods.calculateReward(stakeId).call().then(reward => {
                     const rewardAmount = parseFloat(web3.utils.fromWei(reward, 'ether')).toFixed(4);
+                    console.log(`Calculated reward for Stake ID ${stakeId}: ${rewardAmount} PWR`);
                     document.getElementById('confirmClaimMessage').innerHTML = `Are you sure you want to claim <strong>${plpAmount} PLP</strong> and <strong>${rewardAmount} PWR</strong> for Stake ID <span id="confirmStakeId">${stakeId}</span>?`;
                 }).catch(error => {
-                    console.error("Error calculating reward:", error);
+                    console.error(`Error calculating reward for Stake ID ${stakeId}:`, error);
                     document.getElementById('confirmClaimMessage').innerHTML = `Are you sure you want to claim your PLP and PWR rewards for Stake ID <span id="confirmStakeId">${stakeId}</span>?`;
                 });
             }).catch(error => {
-                console.error("Error fetching stake details:", error);
+                console.error(`Error fetching stake details for ID ${stakeId}:`, error);
+                updateStatus(`Error loading stake details: ${error.message}`, true);
+                document.getElementById('confirmClaimMessage').innerHTML = `Are you sure you want to claim your PLP and PWR rewards for Stake ID <span id="confirmStakeId">${stakeId}</span>?`;
             });
             document.getElementById('confirmClaimModal').style.display = 'block';
             console.log("Confirm claim modal displayed for Stake ID:", stakeId);
@@ -1078,19 +1093,23 @@
 
         function closeConfirmClaimModal() {
             document.getElementById('confirmClaimModal').style.display = 'none';
-            pendingClaimStakeId = null;
-            console.log("Confirm claim modal closed");
+            console.log(`Confirm claim modal closed, pendingClaimStakeId: ${pendingClaimStakeId}`);
+            // No borramos pendingClaimStakeId aquí para permitir reintentos si el cierre fue accidental
         }
 
         async function proceedClaimAll() {
             const stakeId = pendingClaimStakeId;
-            closeConfirmClaimModal();
-            if (!stakeId) {
-                updateStatus("No stake selected for claiming", true);
+            console.log(`proceedClaimAll called with stakeId: ${stakeId}`);
+            if (!stakeId || isNaN(stakeId)) {
+                console.error("No valid stake selected for claiming, pendingClaimStakeId:", pendingClaimStakeId);
+                updateStatus("Error: No valid stake ID selected. Please try clicking Claim All again.", true);
+                closeConfirmClaimModal();
                 return;
             }
 
             try {
+                console.log(`Processing claim for Stake ID: ${stakeId}`);
+                closeConfirmClaimModal();
                 // Validaciones iniciales
                 if (!account) throw new Error("Wallet not connected");
                 if (!web3 || !contract || !plpContract) throw new Error("Contract not initialized");
@@ -1101,6 +1120,7 @@
 
                 // Verificar estado del stake
                 const stake = await contract.methods.getStakeDetails(stakeId).call();
+                console.log(`Stake details for ID ${stakeId}:`, stake);
                 const plpAmount = parseFloat(web3.utils.fromWei(stake.plpAmount, 'ether')).toFixed(4);
                 const rewardAmount = parseFloat(web3.utils.fromWei(await contract.methods.calculateReward(stakeId).call(), 'ether')).toFixed(4);
                 const timeRemaining = Math.max(0, stake.endTime - Math.floor(Date.now() / 1000));
@@ -1257,7 +1277,8 @@
                     updateTotalRewards()
                 ]);
 
-                // Limpiar mensaje de estado después de 20 segundos
+                // Limpiar pendingClaimStakeId y mensaje de estado después de 20 segundos
+                pendingClaimStakeId = null;
                 setTimeout(() => {
                     updateStatus("Waiting for action...", false);
                 }, 20000);
@@ -1275,6 +1296,7 @@
                     errorMessage = "Transaction rejected by user.";
                 }
                 updateStatus(`Claim all failed: ${errorMessage}`, true);
+                pendingClaimStakeId = null;
                 setTimeout(() => {
                     updateStatus("Waiting for action...", false);
                 }, 20000);
