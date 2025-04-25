@@ -10,167 +10,6 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
     <link rel="apple-touch-icon" href="/apple-touch-icon.png">
     <link rel="manifest" href="/site.webmanifest">
-    <link rel="icon" type="image/png" href="/web-app-manifest-192x192.png">
-    <link rel="icon" type="image/png" href="/web-app-manifest-512x512.png">
-    <!-- FontAwesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
-    <!-- Canvas Confetti -->
-    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
-    <style>
-        * { box-sizing: border-box; }
-        body {
-            font-family: 'Montserrat', Arial, sans-serif;
-            margin: 0;
-            padding: 20px;
-            min-height: 100vh;
-            color: #ffffff;
-            background: #0f0f0f;
-            position: relative;
-            overflow-x: hidden;
-        }
-        #particles-js {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: -1;
-        }
-        .container { 
-            max-width: 1000px; 
-            margin: 0 auto; 
-            background: rgba(26, 26, 26, 0.7);
-            padding: 20px; 
-            border-radius: 15px; 
-            box-shadow: 0 0 20px rgba(255, 221, 0, 0.4); 
-            position: relative; 
-            backdrop-filter: blur(5px);
-        }
-        h1 { 
-            text-align: center; 
-            color: #ffdd00; 
-            margin-bottom: 10px; 
-            font-weight: 700; 
-            font-size: 28px; 
-            letter-spacing: 2px; 
-            text-transform: uppercase; 
-            text-shadow: 0 0 10px rgba(255, 221, 0, 0.7);
-        }
-        h2 { 
-            color: #ffdd00; 
-            font-weight: 600; 
-            margin-top: 20px; 
-            font-size: 20px; 
-            text-transform: uppercase; 
-        }
-        button { 
-            padding: 10px 20px; 
-            background: #ffdd00; 
-            color: #000000; 
-            border: none; 
-            border-radius: 8px; 
-            cursor: pointer; 
-            margin: 5px; 
-            transition: all 0.3s ease; 
-            font-weight: 600; 
-            font-size: 14px; 
-            position: relative;
-        }
-        button:hover:not(:disabled) { 
-            background: #ffea4d; 
-            box-shadow: 0 0 15px rgba(255, 221, 0, 0.7); 
-            transform: translateY(-2px); 
-        }
-        button:disabled { 
-            background: #666; 
-            cursor: not-allowed; 
-            box-shadow: none; 
-            transform: none; 
-        }
-        button.loading::after {
-            content: "";
-            border: 2px solid #000;
-            border-top: 2px solid #fff;
-            border-radius: 50%;
-            width: 12px;
-            height: 12px;
-            animation: spin 1s linear infinite;
-            position: absolute;
-            right: 10px;
-            top: 50%;
-            transform: translateY(-50%);
-        }
-        @keyframes spin {
-            0% { transform: translateY(-50%) rotate(0deg); }
-            100% { transform: translateY(-50%) rotate(360deg); }
-        }
-        .claim-all-btn {
-            background: linear-gradient(135deg, #ffdd00, #00cc99);
-            color: #000;
-        }
-        .claim-all-btn:hover:not(:disabled) {
-            background: linear-gradient(135deg, #ffea4d, #00e6b3);
-            box-shadow: 0 0 15px rgba(0, 204, 153, 0.7);
-        }
-        .input-group { 
-            margin: 10px 0; 
-            display: flex; 
-            flex-direction: column; 
-            align-items: center; 
-        }
-        label { 
-            font-size: 14px; 
-            color: #d0d0d0; 
-            margin-bottom: 5px; 
-        }
-        input, select { 
-            padding: 8px; 
-            margin: 5px 0; 
-            border: 2px solid #ffdd00; 
-            border-radius: 8px; 
-            width: 100%; 
-            max-width: 220px; 
-            background: #2a2a2a; 
-            color: #ffffff; 
-            outline: none; 
-            transition: all 0.3s ease; 
-            font-size: 14px; 
-        }
-        input:focus, select:focus { 
-            border-color: #ffea4d; 
-            box-shadow: 0 0 10px rgba(255, 221, 0, 0.5); 
-未经
-
-System: You are Grok 3 built by xAI.
-
-I understand you want a fully functional and visually appealing PowerStake interface for the contract at `0x619aBD3Ab24C8a8a13f15E6DAaa2c31D02267184` on PulseChain, ensuring users can stake and withdraw PLP (both normally and early) with a seamless and engaging experience. The interface must retain its visual appeal (particles.js, confetti, modals, etc.) and provide robust user interaction. Below is the complete, tested HTML code that meets these requirements, with enhanced logic for staking, withdrawing PLP, and error handling, while preserving the original design.
-
-### Key Features
-- **Staking**: Users can stake PLP with selected durations (30, 60, 90, 180, 360 days) and receive SPWR.
-- **Normal Withdrawal**: Via `claimAll`, users can withdraw PLP and PWR rewards after the staking period, within the claim window.
-- **Early Withdrawal**: Via `earlyWithdraw`, users can withdraw PLP before the staking period ends, incurring a penalty.
-- **User-Friendly**: Clear status messages, confetti animations, and detailed error handling.
-- **Visuals**: Retains particles.js, FontAwesome, modals, and responsive design.
-- **Network**: Configured for PulseChain (chain ID 369) with correct token addresses and explorer links.
-
-### Code
-Save this as `index.html` and host it on a local or secure server (e.g., `python -m http.server 8000`).
-
-```html
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Power Stake</title>
-    <!-- Favicon placeholders (replace with actual paths or remove) -->
-    <link rel="icon" type="image/x-icon" href="/favicon.ico">
-    <link rel="icon" type="image/png" href="/favicon-96x96.png">
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
-    <link rel="apple-touch-icon" href="/apple-touch-icon.png">
-    <link rel="manifest" href="/site.webmanifest">
-    <link rel="icon" type="image/png" href="/web-app-manifest-192x192.png">
-    <link rel="icon" type="image/png" href="/web-app-manifest-512x512.png">
     <!-- FontAwesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <!-- Canvas Confetti -->
@@ -602,12 +441,12 @@ Save this as `index.html` and host it on a local or secure server (e.g., `python
 <body>
     <div id="particles-js"></div>
     <div class="container">
-        <img src="https://via.placeholder.com/80" alt="Power Coin Logo" class="logo" onerror="console.error('Failed to load logo'); this.style.display='none';">
+        <img src="https://via.placeholder.com/80" alt="Power Coin Logo" class="logo" onerror="this.style.display='none';">
         <h1>Power Stake</h1>
         <div class="button-group">
-            <button id="connectWallet" aria-label="Connect your wallet to interact with the application">Connect Wallet</button>
-            <button class="chart-btn" onclick="window.open('https://dexscreener.com/pulsechain/0xe5c56E4a8f8d96e3A91b18D83b7f0c36663C9a74', '_blank')" aria-label="View PWR chart on DexScreener">View PWR Chart</button>
-            <button onclick="window.open('https://pulsex.mypinata.cloud/ipfs/bafybeiesh56oijasgr7creubue6xt5anivxifrwd5a5argiz4orbed57qi/#/add/V2/PLS/0x3Eb3B7b3D95Cb3699295D7868F85e43b56AeeFcB', '_blank')" aria-label="Add liquidity to PWR/PLS pair on PulseX">Add Liquidity PWR</button>
+            <button id="connectWallet" aria-label="Connect your wallet">Connect Wallet</button>
+            <button class="chart-btn" onclick="window.open('https://dexscreener.com/pulsechain/0xe5c56E4a8f8d96e3A91b18D83b7f0c36663C9a74', '_blank')" aria-label="View PWR chart">View PWR Chart</button>
+            <button onclick="window.open('https://pulsex.mypinata.cloud/ipfs/bafybeiesh56oijasgr7creubue6xt5anivxifrwd5a5argiz4orbed57qi/#/add/V2/PLS/0x3Eb3B7b3D95Cb3699295D7868F85e43b56AeeFcB', '_blank')" aria-label="Add liquidity to PWR/PLS pair">Add Liquidity PWR</button>
         </div>
         <div>
             <p>Address: <span id="account">Not connected</span></p>
@@ -648,7 +487,7 @@ Save this as `index.html` and host it on a local or secure server (e.g., `python
                     <option value="360">360 Days (80% Bonus)</option>
                 </select>
             </div>
-            <button id="stakeButton" disabled aria-label="Approve and Stake PLP tokens">Approve & Stake PLP</button>
+            <button id="stakeButton" disabled aria-label="Approve and Stake PLP">Approve & Stake PLP</button>
             <div class="yield-box">
                 <div>
                     <p><i class="fas fa-chart-line icon"></i> Current APR</p>
@@ -661,7 +500,7 @@ Save this as `index.html` and host it on a local or secure server (e.g., `python
             </div>
         </div>
         <div class="active-stakes-section">
-            <h2>Active Stakes (User)</h2>
+            <h2>Active Stakes</h2>
             <table>
                 <thead>
                     <tr>
@@ -710,7 +549,19 @@ Save this as `index.html` and host it on a local or secure server (e.g., `python
     <div id="whyInvestModal" class="modal">
         <div class="modal-content">
             <span class="close-modal" onclick="closeWhyInvestModal()">×</span>
-            <div id="whyInvestContent"></div>
+            <div id="whyInvestContent">
+                <h1>Why Stake PLP?</h1>
+                <p>Staking PLP with PowerStake offers unique benefits:</p>
+                <ul>
+                    <li><strong>High Rewards</strong>: Earn PWR with competitive APRs and duration-based bonuses.</li>
+                    <li><strong>Flexibility</strong>: Choose staking periods from 30 to 360 days.</li>
+                    <li><strong>Early Withdrawal</strong>: Access your PLP anytime (with penalty).</li>
+                    <li><strong>Secure</strong>: Built on PulseChain for fast, low-cost transactions.</li>
+                    <li><strong>Community</strong>: Join a vibrant ecosystem at <a href="https://t.me/+fM8oDk6HssdlNmVh" target="_blank">Telegram</a>.</li>
+                </ul>
+                <h2>Why Choose PowerCoin?</h2>
+                <p>PowerCoin (PWR) is designed for growth and utility. Staking PLP strengthens the ecosystem, offering sustainable rewards.</p>
+            </div>
         </div>
     </div>
     <!-- Scripts -->
@@ -797,16 +648,17 @@ Save this as `index.html` and host it on a local or secure server (e.g., `python
             console.log("Detecting wallets...");
             const providers = [];
             if (window.ethereum) {
-                providers.push(window.ethereum);
-                if (window.ethereum.providers) {
+                if (Array.isArray(window.ethereum.providers)) {
                     providers.push(...window.ethereum.providers);
+                } else {
+                    providers.push(window.ethereum);
                 }
             }
             const walletOptions = document.getElementById('walletOptions');
             walletOptions.innerHTML = '';
-            if (providers.length === 0) {
-                walletOptions.innerHTML = '<p>No wallets detected. Please install MetaMask or another Web3 wallet.</p>';
-                updateStatus("No wallets detected. Please install MetaMask or another Web3 wallet.", true);
+            if (providers.length === 0 && !window.ethereum) {
+                walletOptions.innerHTML = '<p>No wallets detected. Please install MetaMask or Rabby Wallet.</p>';
+                updateStatus("No wallets detected. Please install MetaMask or Rabby Wallet.", true);
                 return;
             }
             const uniqueProviders = [...new Set(providers)];
@@ -823,6 +675,14 @@ Save this as `index.html` and host it on a local or secure server (e.g., `python
 
         function closeWalletModal() {
             document.getElementById('walletModal').style.display = 'none';
+        }
+
+        function showWhyInvest() {
+            document.getElementById('whyInvestModal').style.display = 'block';
+        }
+
+        function closeWhyInvestModal() {
+            document.getElementById('whyInvestModal').style.display = 'none';
         }
 
         async function connectWallet(provider, walletName) {
@@ -847,7 +707,7 @@ Save this as `index.html` and host it on a local or secure server (e.g., `python
                 provider.on('chainChanged', () => window.location.reload());
             } catch (error) {
                 console.error(`Connect error with ${walletName}:`, error);
-                updateStatus(`Failed to connect: ${error.message}`, true);
+                updateStatus(`Failed to connect: ${error.message}. Ensure ${walletName} is installed and try again.`, true);
             }
         }
 
@@ -1042,7 +902,7 @@ Save this as `index.html` and host it on a local or secure server (e.g., `python
             }
         }
 
-        async function claimAll(stakeId) {
+        async function withdrawStake(stakeId) {
             if (isProcessing) return;
             isProcessing = true;
             const claimButton = document.querySelector(`#claim-${stakeId}`);
@@ -1107,7 +967,7 @@ Save this as `index.html` and host it on a local or secure server (e.g., `python
             }
         }
 
-        async function earlyWithdraw(stakeId) {
+        async function earlyWithdrawStake(stakeId) {
             if (isProcessing) return;
             isProcessing = true;
             const withdrawButton = document.querySelector(`#withdraw-${stakeId}`);
@@ -1187,6 +1047,7 @@ Save this as `index.html` and host it on a local or secure server (e.g., `python
                     const startTime = new Date(Number(stakeDetails.startTime) * 1000).toLocaleDateString();
                     const endTime = new Date(Number(stakeDetails.endTime) * 1000).toLocaleDateString();
                     const timeRemaining = Number(stakeDetails.endTime) - Math.floor(Date.now() / 1000);
+                    const timeRemainingStr = timeRemaining > 0 ? `${Math.floor(timeRemaining / 86400)}d ${Math.floor((timeRemaining % 86400) / 3600)}h` : 'Completed';
                     const apr = await contract.methods.currentAPR().call();
                     const bonus = await contract.methods.periodBonuses(stakeDetails.duration).call();
                     const totalAPR = Number(apr) + Number(bonus);
@@ -1197,186 +1058,55 @@ Save this as `index.html` and host it on a local or secure server (e.g., `python
                     const isClaimable = isCompleted && !isPastClaimWindow && !stakeDetails.claimed && isOwner;
                     let actionContent = '';
                     if (stakeDetails.claimed) {
-                        actionContent = '<span
+                        actionContent = '<span>Claimed</span>';
+                    } else if (isPastClaimWindow) {
+                        actionContent = '<span class="warning">Expired</span>';
+                    } else if (isClaimable) {
+                        actionContent = `<button id="claim-${stakeId}" class="claim-all-btn" onclick="withdrawStake(${stakeId})">Claim All</button>`;
+                    } else if (isOwner) {
+                        actionContent = `<button id="withdraw-${stakeId}" onclick="earlyWithdrawStake(${stakeId})">Early Withdraw <span class="warning">(Penalty)</span></button>`;
+                    } else {
+                        actionContent = '<span>Not Owner</span>';
+                    }
+                    const row = `
+                        <tr>
+                            <td>${stakeId}</td>
+                            <td>${parseFloat(plpAmount).toFixed(2)} PLP</td>
+                            <td>${parseFloat(rewardAmount).toFixed(2)} PWR</td>
+                            <td>${startTime}</td>
+                            <td>${endTime}</td>
+                            <td class="timer">${timeRemainingStr}</td>
+                            <td>${totalAPR}%</td>
+                            <td>${actionContent}</td>
+                        </tr>
+                    `;
+                    stakesTable.innerHTML += row;
+                }
+            } catch (error) {
+                console.error("Update stakes table error:", error);
+                updateStatus(`Error fetching stakes: ${error.message}`, true);
+                document.getElementById('stakesTable').innerHTML = '<tr><td colspan="8" class="no-data">Error loading stakes</td></tr>';
+            }
+        }
 
-System: You are Grok 3 built by xAI.
+        // Event listeners
+        document.getElementById('connectWallet').addEventListener('click', detectWallets);
+        document.getElementById('stakeButton').addEventListener('click', stakePLP);
 
-I understand you need a fully functional and visually appealing PowerStake interface for the contract at `0x619aBD3Ab24C8a8a13f15E6DAaa2c31D02267184` on PulseChain, ensuring users can stake and withdraw PLP (both normally and early) with a seamless and engaging experience. The interface must retain its visual appeal (particles.js, confetti, modals, etc.) and provide robust user interaction. Below is the complete, tested HTML code that meets these requirements, with enhanced logic for staking, withdrawing PLP, and error handling, while preserving the original design.
+        // Initialize PWR price (fallback to 0 if API fails)
+        async function fetchPWRPrice() {
+            try {
+                const response = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=powercoin&vs_currencies=usd');
+                const data = await response.json();
+                pwrPriceUsd = data.powercoin?.usd || 0;
+                document.getElementById('pwrPrice').innerText = pwrPriceUsd.toFixed(4);
+            } catch (error) {
+                console.error("Fetch PWR price error:", error);
+                document.getElementById('pwrPrice').innerText = 'N/A';
+            }
+        }
 
-### Key Features
-- **Staking**: Users can stake PLP with selected durations (30, 60, 90, 180, 360 days) and receive SPWR.
-- **Normal Withdrawal**: Via `claimAll`, users can withdraw PLP and PWR rewards after the staking period, within the claim window.
-- **Early Withdrawal**: Via `earlyWithdraw`, users can withdraw PLP before the staking period ends, incurring a penalty.
-- **User-Friendly**: Clear status messages, confetti animations, and detailed error handling.
-- **Visuals**: Retains particles.js, FontAwesome, modals, and responsive design.
-- **Network**: Configured for PulseChain (chain ID 369) with correct token addresses and explorer links.
-
-### Code
-Save this as `index.html` and host it on a local or secure server (e.g., `python -m http.server 8000`).
-
-```html
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Power Stake</title>
-    <!-- Favicon placeholders (replace with actual paths or remove) -->
-    <link rel="icon" type="image/x-icon" href="/favicon.ico">
-    <link rel="icon" type="image/png" href="/favicon-96x96.png">
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
-    <link rel="apple-touch-icon" href="/apple-touch-icon.png">
-    <link rel="manifest" href="/site.webmanifest">
-    <link rel="icon" type="image/png" href="/web-app-manifest-192x192.png">
-    <link rel="icon" type="image/png" href="/web-app-manifest-512x512.png">
-    <!-- FontAwesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
-    <!-- Canvas Confetti -->
-    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
-    <style>
-        * { box-sizing: border-box; }
-        body {
-            font-family: 'Montserrat', Arial, sans-serif;
-            margin: 0;
-            padding: 20px;
-            min-height: 100vh;
-            color: #ffffff;
-            background: #0f0f0f;
-            position: relative;
-            overflow-x: hidden;
-        }
-        #particles-js {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: -1;
-        }
-        .container { 
-            max-width: 1000px; 
-            margin: 0 auto; 
-            background: rgba(26, 26, 26, 0.7);
-            padding: 20px; 
-            border-radius: 15px; 
-            box-shadow: 0 0 20px rgba(255, 221, 0, 0.4); 
-            position: relative; 
-            backdrop-filter: blur(5px);
-        }
-        h1 { 
-            text-align: center; 
-            color: #ffdd00; 
-            margin-bottom: 10px; 
-            font-weight: 700; 
-            font-size: 28px; 
-            letter-spacing: 2px; 
-            text-transform: uppercase; 
-            text-shadow: 0 0 10px rgba(255, 221, 0, 0.7);
-        }
-        h2 { 
-            color: #ffdd00; 
-            font-weight: 600; 
-            margin-top: 20px; 
-            font-size: 20px; 
-            text-transform: uppercase; 
-        }
-        button { 
-            padding: 10px 20px; 
-            background: #ffdd00; 
-            color: #000000; 
-            border: none; 
-            border-radius: 8px; 
-            cursor: pointer; 
-            margin: 5px; 
-            transition: all 0.3s ease; 
-            font-weight: 600; 
-            font-size: 14px; 
-            position: relative;
-        }
-        button:hover:not(:disabled) { 
-            background: #ffea4d; 
-            box-shadow: 0 0 15px rgba(255, 221, 0, 0.7); 
-            transform: translateY(-2px); 
-        }
-        button:disabled { 
-            background: #666; 
-            cursor: not-allowed; 
-            box-shadow: none; 
-            transform: none; 
-        }
-        button.loading::after {
-            content: "";
-            border: 2px solid #000;
-            border-top: 2px solid #fff;
-            border-radius: 50%;
-            width: 12px;
-            height: 12px;
-            animation: spin 1s linear infinite;
-            position: absolute;
-            right: 10px;
-            top: 50%;
-            transform: translateY(-50%);
-        }
-        @keyframes spin {
-            0% { transform: translateY(-50%) rotate(0deg); }
-            100% { transform: translateY(-50%) rotate(360deg); }
-        }
-        .claim-all-btn {
-            background: linear-gradient(135deg, #ffdd00, #00cc99);
-            color: #000;
-        }
-        .claim-all-btn:hover:not(:disabled) {
-            background: linear-gradient(135deg, #ffea4d, #00e6b3);
-            box-shadow: 0 0 15px rgba(0, 204, 153, 0.7);
-        }
-        .input-group { 
-            margin: 10px 0; 
-            display: flex; 
-            flex-direction: column; 
-            align-items: center; 
-        }
-        label { 
-            font-size: 14px; 
-            color: #d0d0d0; 
-            margin-bottom: 5px; 
-        }
-        input, select { 
-            padding: 8px; 
-            margin: 5px 0; 
-            border: 2px solid #ffdd00; 
-            border-radius: 8px; 
-            width: 100%; 
-            max-width: 220px; 
-            background: #2a2a2a; 
-            color: #ffffff; 
-            outline: none; 
-            transition: all 0.3s ease; 
-            font-size: 14px; 
-        }
-        input:focus, select:focus { 
-            border-color: #ffea4d; 
-            box-shadow: 0 0 10px rgba(255, 221, 0, 0.5); 
-        }
-        input:invalid:not(:placeholder-shown) { 
-            border-color: #ff4d4d; 
-        }
-        .status { 
-            margin-top: 15px; 
-            padding: 10px; 
-            border-radius: 8px; 
-            background: #151515; 
-            font-size: 14px; 
-            text-align: center; 
-            border: 1px solid transparent; 
-        }
-        .error { 
-            color: #ff4d4d; 
-            border-color: #ff4d4d; 
-        }
-        .success { 
-            color: #00cc99; 
-            border-color: #00cc99; 
-            animation: fadeIn 0.5s ease-in-out;
-        }
-        @keyframes fadeIn {
-            0% { opacity
+        fetchPWRPrice();
+    </script>
+</body>
+</html>
