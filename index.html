@@ -94,14 +94,6 @@
             background: linear-gradient(135deg, #ffea4d, #00e6b3);
             box-shadow: 0 0 15px rgba(0, 204, 153, 0.7);
         }
-        .burn-spwr-btn {
-            background: linear-gradient(135deg, #ff4d4d, #ffdd00);
-            color: #000;
-        }
-        .burn-spwr-btn:hover {
-            background: linear-gradient(135deg, #ff6666, #ffea4d);
-            box-shadow: 0 0 15px rgba(255, 77, 77, 0.7);
-        }
         .input-group { 
             margin: 10px 0; 
             display: flex; 
@@ -333,7 +325,6 @@
             border-radius: 15px; 
             box-shadow: 0 0 20px rgba(255, 221, 0, 0.4); 
             text-align: center; 
-*log
             max-width: 300px; 
             width: 100%; 
         }
@@ -454,8 +445,6 @@
                 <h2>SPWR (Staked PLP)</h2>
                 <p>Your SPWR: <span id="spwrBalance">0</span> SPWR</p>
                 <p>Total Rewards Left: <span id="totalRewards">2,500,000</span> PWR</p>
-                <!-- NEW: Button to burn SPWR -->
-                <button id="burnSPWRButton" class="burn-spwr-btn" disabled onclick="burnSPWR()" aria-label="Burn SPWR to receive PLP and PWR">Burn SPWR</button>
             </div>
         </div>
         <div class="stake-section">
@@ -507,6 +496,7 @@
         </div>
         <div class="view-stakes-btn">
             <button onclick="window.location.href='general-stakes.html'" aria-label="View all stakes">View All Stakes</button>
+            <button onclick="claimAllStakes()" class="claim-all-btn" disabled id="claimAllStakesButton" aria-label="Claim all completed stakes">Claim All Stakes</button>
             <button onclick="showWhyInvest()" aria-label="Why Stake PLP is Better">Why Stake PLP is Better</button>
         </div>
         <div class="status" id="status">Status: Waiting for action...</div>
@@ -593,23 +583,28 @@
         const erc20ABI = [
             {"inputs":[{"internalType":"address","name":"account","type":"address"}],"name":"balanceOf","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
             {"inputs":[{"internalType":"address","name":"spender","type":"address"},{"internalType":"uint256","name":"amount","type":"uint256"}],"name":"approve","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},
-            {"inputs":[{"internalType":"address","name":"owner","type":"address"},{"internalType":"address","name":"spender","type":"address"}],"name":"allowance","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
-            // NEW: Added burn function for SPWR
-            {"inputs":[{"internalType":"uint256","name":"amount","type":"uint256"}],"name":"burn","outputs":[],"stateMutability":"nonpayable","type":"function"}
+            {"inputs":[{"internalType":"address","name":"owner","type":"address"},{"internalType":"address","name":"spender","type":"address"}],"name":"allowance","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"}
         ];
 
         async function detectWallets() {
             console.log("Detecting wallets...");
-            const providers = window.ethereum?.providers || (window.ethereum ? [window.ethereum] : []);
+            const providers = [];
+            if (window.ethereum) {
+                providers.push(window.ethereum);
+                if (window.ethereum.providers) {
+                    providers.push(...window.ethereum.providers);
+                }
+            }
             const walletOptions = document.getElementById('walletOptions');
             walletOptions.innerHTML = '';
             if (providers.length === 0) {
-                walletOptions.innerHTML = '<p>No wallets detected. Please install MetaMask or Rabby Wallet.</p>';
+                walletOptions.innerHTML = '<p>No wallets detected. Please install MetaMask or another Web3 wallet.</p>';
                 console.error("No wallets detected");
-                updateStatus("No wallets detected. Please install MetaMask or Rabby Wallet.", true);
+                updateStatus("No wallets detected. Please install MetaMask or another Web3 wallet.", true);
                 return;
             }
-            providers.forEach((provider, index) => {
+            const uniqueProviders = [...new Set(providers)];
+            uniqueProviders.forEach((provider, index) => {
                 const walletName = provider.isMetaMask ? 'MetaMask' : provider.isRabby ? 'Rabby Wallet' : `Wallet ${index + 1}`;
                 const button = document.createElement('button');
                 button.className = 'wallet-option';
@@ -618,7 +613,7 @@
                 walletOptions.appendChild(button);
             });
             document.getElementById('walletModal').style.display = 'block';
-            console.log("Wallet modal displayed with", providers.length, "options");
+            console.log("Wallet modal displayed with", uniqueProviders.length, "options");
         }
 
         function closeWalletModal() {
@@ -689,9 +684,8 @@
                 contract = new web3.eth.Contract(powerStakeABI, contractAddress);
                 plpContract = new web3.eth.Contract(erc20ABI, plpAddress);
                 spwrAddress = await contract.methods.spwrToken().call();
-                spwrContract = new web3.eth.Contract(erc20ABI, spwrAddress); // NEW: Initialize SPWR contract
+                spwrContract = new web3.eth.Contract(erc20ABI, spwrAddress);
                 console.log("Contracts initialized:", { contractAddress, plpAddress, spwrAddress });
-                updateBurnSPWRButtonState(); // NEW: Update burn button state
             } catch (error) {
                 console.error("Initialize contracts error:", error);
                 updateStatus(`Error initializing contracts: ${error.message}. Please ensure you're on PulseChain.`, true);
@@ -701,14 +695,14 @@
         async function init() {
             console.log("Initializing application...");
             if (!window.ethereum) {
-                updateStatus("No wallet detected. Please install MetaMask or Rabby Wallet.", true);
+                updateStatus("No wallet detected. Please install MetaMask or another Web3 wallet.", true);
                 console.error("No Ethereum provider detected");
                 return;
             }
             document.getElementById('connectWallet').addEventListener('click', detectWallets);
             document.getElementById('stakeButton').addEventListener('click', stakePLP);
             await updateTokenPrices();
-            setInterval(updateTokenPrices, 60000); // Update prices every 60 seconds
+            setInterval(updateTokenPrices, 60000);
             await updateTotalRewards();
             await updateStakesTable();
             console.log("Initialization complete");
@@ -723,7 +717,8 @@
                 await updatePLPBalance();
                 await updateSPWRBalance();
                 await updateStakesTable();
-                updateBurnSPWRButtonState(); // NEW: Update burn button state
+            } else {
+                document.getElementById('claimAllStakesButton').disabled = true;
             }
         }
 
@@ -749,7 +744,7 @@
                 return priceUsd;
             } catch (error) {
                 console.error(`Error fetching price from DexScreener for ${tokenAddress}:`, error);
-                return 0; // Fallback to 0 for UI consistency
+                return 0;
             }
         }
 
@@ -794,7 +789,7 @@
                     const gasEstimate = await plpContract.methods.approve(contractAddress, amountWei).estimateGas({ from: account });
                     const approvalTx = await plpContract.methods.approve(contractAddress, amountWei).send({
                         from: account,
-                        gas: Math.ceil(gasEstimate * 1.5),
+                        gas: Math.ceil(gasEstimate * 1.2),
                         gasPrice
                     });
                     updateStatus(`PLP Approved (Tx: ${approvalTx.transactionHash.slice(0, 6)}...)`, false);
@@ -805,10 +800,10 @@
                 const stakeGasEstimate = await contract.methods.createStake(amountWei, durationSeconds).estimateGas({ from: account });
                 const stakeTx = await contract.methods.createStake(amountWei, durationSeconds).send({
                     from: account,
-                    gas: Math.ceil(stakeGasEstimate * 1.5),
+                    gas: Math.ceil(stakeGasEstimate * 1.2),
                     gasPrice: gasPriceStake
                 });
-                updateStatus(`Stake created successfully (Tx: ${stakeTx.transactionHash.slice(0, 6)}...)`, false);
+                updateStatus(`Stake created successfully, SPWR received (Tx: ${stakeTx.transactionHash.slice(0, 6)}...)`, false);
                 confetti({
                     particleCount: 100,
                     spread: 70,
@@ -816,13 +811,12 @@
                     colors: ['#ffdd00', '#00cc99']
                 });
                 await updatePLPBalance();
-                await updateSPWRBalance();
+                await editSPWRBalance();
                 await updateStakesTable();
                 await updateTotalRewards();
                 document.getElementById('stakeAmount').value = '';
                 document.getElementById('stakePeriod').value = '';
                 updateStakeButtonState();
-                updateBurnSPWRButtonState(); // NEW: Update burn button state
             } catch (error) {
                 console.error("Stake error:", error);
                 updateStatus(`Stake failed: ${error.message}. Please check your wallet and try again.`, true);
@@ -835,23 +829,6 @@
             const isDisabled = !account || !amount || parseFloat(amount) <= 0 || !period;
             document.getElementById('stakeButton').disabled = isDisabled;
             console.log("Stake button state:", isDisabled ? "Disabled" : "Enabled");
-        }
-
-        // NEW: Function to update Burn SPWR button state
-        async function updateBurnSPWRButtonState() {
-            if (!account || !spwrContract) {
-                document.getElementById('burnSPWRButton').disabled = true;
-                return;
-            }
-            try {
-                const spwrBalanceWei = await spwrContract.methods.balanceOf(account).call();
-                const spwrBalance = parseFloat(web3.utils.fromWei(spwrBalanceWei, 'ether'));
-                document.getElementById('burnSPWRButton').disabled = spwrBalance <= 0;
-                console.log("Burn SPWR button state:", spwrBalance > 0 ? "Enabled" : "Disabled");
-            } catch (error) {
-                console.error("Burn SPWR button state error:", error);
-                document.getElementById('burnSPWRButton').disabled = true;
-            }
         }
 
         document.getElementById('stakeAmount').addEventListener('input', () => {
@@ -877,7 +854,7 @@
             }
         }
 
-        async function updateSPWRBalance() {
+        async function editSPWRBalance() {
             if (!account || !spwrAddress) {
                 document.getElementById('spwrBalance').innerText = "0";
                 return;
@@ -887,7 +864,6 @@
                 const spwrBalance = web3.utils.fromWei(spwrBalanceWei, 'ether');
                 document.getElementById('spwrBalance').innerText = parseFloat(spwrBalance).toFixed(4);
                 console.log("SPWR balance:", spwrBalance);
-                updateBurnSPWRButtonState(); // NEW: Update burn button state
             } catch (error) {
                 console.error("SPWR balance error:", error);
                 updateStatus("Error loading SPWR balance. Please try again.", true);
@@ -923,6 +899,7 @@
             console.log("Updating stakes table...");
             const tbody = document.getElementById('stakesTable');
             tbody.innerHTML = '';
+            let hasClaimableStakes = false;
             if (!account || !contract) {
                 tbody.innerHTML = '<tr><td colspan="8" class="no-data">Connect your wallet to view your stakes</td></tr>';
                 console.log("No account or contract available");
@@ -955,6 +932,7 @@
                     const bonus = {30: 0, 60: 10, 90: 20, 180: 40, 360: 80}[periodDays] || 0;
                     const currentAPR = await contract.methods.currentAPR().call();
                     const apr = parseInt(currentAPR) + bonus;
+                    if (timeRemaining === 0) hasClaimableStakes = true;
                     const row = document.createElement('tr');
                     row.innerHTML = `
                         <td>${stakeId}</td>
@@ -987,7 +965,8 @@
                         }, 1000);
                     }
                 }
-                console.log("Stakes table updated successfully");
+                document.getElementById('claimAllStakesButton').disabled = !account || !hasClaimableStakes;
+                console.log("Stakes table updated successfully, Claim All Stakes button:", hasClaimableStakes ? "Enabled" : "Disabled");
             } catch (error) {
                 console.error("Stakes table error:", error);
                 tbody.innerHTML = '<tr><td colspan="8" class="no-data">Error loading stakes</td></tr>';
@@ -1002,7 +981,7 @@
                 const gasEstimate = await contract.methods.withdrawStake(stakeId).estimateGas({ from: account });
                 const tx = await contract.methods.withdrawStake(stakeId).send({
                     from: account,
-                    gas: Math.ceil(gasEstimate * 1.5),
+                    gas: Math.ceil(gasEstimate * 1.2),
                     gasPrice
                 });
                 console.log(`Withdraw successful for stake ${stakeId}:`, tx);
@@ -1016,15 +995,15 @@
         async function earlyWithdraw(stakeId) {
             try {
                 console.log(`Initiating early withdrawal for stake ${stakeId}...`);
-                updateStatus("Processing early withdrawal (penalties may apply)...", false);
+                updateStatus("Processing early withdrawal (penalties may apply, SPWR will be surrendered)...", false);
                 const gasPrice = await web3.eth.getGasPrice();
                 const gasEstimate = await contract.methods.earlyWithdrawStake(stakeId).estimateGas({ from: account });
                 const tx = await contract.methods.earlyWithdrawStake(stakeId).send({
                     from: account,
-                    gas: Math.ceil(gasEstimate * 1.5),
+                    gas: Math.ceil(gasEstimate * 1.2),
                     gasPrice
                 });
-                updateStatus(`Early withdrawal completed (Tx: ${tx.transactionHash.slice(0, 6)}...). Check your wallet for PLP and rewards.`, false);
+                updateStatus(`Early withdrawal completed, SPWR surrendered (Tx: ${tx.transactionHash.slice(0, 6)}...). Check your wallet for PLP and rewards.`, false);
                 confetti({
                     particleCount: 80,
                     spread: 60,
@@ -1032,7 +1011,7 @@
                     colors: ['#ffdd00', '#00cc99']
                 });
                 await updatePLPBalance();
-                await updateSPWRBalance();
+                await editSPWRBalance();
                 await updateStakesTable();
                 await updateTotalRewards();
             } catch (error) {
@@ -1048,7 +1027,7 @@
                 const gasEstimate = await contract.methods.claimRewards(stakeId).estimateGas({ from: account });
                 const tx = await contract.methods.claimRewards(stakeId).send({
                     from: account,
-                    gas: Math.ceil(gasEstimate * 1.5),
+                    gas: Math.ceil(gasEstimate * 1.2),
                     gasPrice
                 });
                 console.log(`Rewards claimed for stake ${stakeId}:`, tx);
@@ -1062,8 +1041,7 @@
         async function claimAll(stakeId) {
             try {
                 console.log(`Claiming all for stake ${stakeId}...`);
-                updateStatus("Processing PLP withdrawal, SPWR burn, and PWR rewards...", false);
-                // NEW: Ensure SPWR is burned as part of withdrawStake
+                updateStatus("Processing PLP withdrawal and PWR rewards, SPWR will be surrendered...", false);
                 const withdrawTx = await withdraw(stakeId);
                 console.log(`Withdraw Tx: ${withdrawTx.transactionHash}`);
                 const claimTx = await claimRewards(stakeId);
@@ -1075,9 +1053,9 @@
                     colors: ['#ffdd00', '#00cc99', '#ffffff'],
                     zIndex: 9999
                 });
-                updateStatus(`PLP withdrawn, SPWR burned, and PWR rewards claimed successfully (Tx: ${claimTx.transactionHash.slice(0, 6)}...). Check your wallet.`, false);
+                updateStatus(`PLP withdrawn, PWR rewards claimed, and SPWR surrendered successfully (Tx: ${claimTx.transactionHash.slice(0, 6)}...). Check your wallet.`, false);
                 await updatePLPBalance();
-                await updateSPWRBalance();
+                await editSPWRBalance();
                 await updateStakesTable();
                 await updateTotalRewards();
             } catch (error) {
@@ -1086,54 +1064,41 @@
             }
         }
 
-        // NEW: Function to burn SPWR and receive PLP and PWR
-        async function burnSPWR() {
+        async function claimAllStakes() {
             try {
-                console.log("Initiating SPWR burn...");
-                if (!account || !spwrContract || !contract) throw new Error("Wallet or contracts not initialized. Please connect your wallet.");
-                updateStatus("Processing SPWR burn...", false);
-                const spwrBalanceWei = await spwrContract.methods.balanceOf(account).call();
-                const spwrBalance = web3.utils.fromWei(spwrBalanceWei, 'ether');
-                if (parseFloat(spwrBalance) <= 0) throw new Error("No SPWR available to burn.");
-                // NEW: Fetch all user stakes to burn associated SPWR
+                console.log("Claiming all completed stakes...");
+                if (!account || !contract) throw new Error("Wallet or contracts not initialized. Please connect your wallet.");
+                updateStatus("Processing all completed stakes, SPWR will be surrendered...", false);
                 const stakeIds = await contract.methods.getUserStakes(account).call();
-                if (!stakeIds || stakeIds.length === 0) throw new Error("No active stakes found to burn SPWR.");
+                if (!stakeIds || stakeIds.length === 0) throw new Error("No active stakes found.");
+                let claimedCount = 0;
                 for (let stakeId of stakeIds) {
                     const stake = await contract.methods.getStakeDetails(stakeId).call();
                     if (stake.claimed) continue;
                     const timeRemaining = Math.max(0, stake.endTime - Math.floor(Date.now() / 1000));
-                    if (timeRemaining > 0) {
-                        // Early withdrawal for active stakes
-                        console.log(`Early withdrawing stake ${stakeId} to burn SPWR...`);
-                        await earlyWithdraw(stakeId);
-                    } else {
-                        // Claim all for completed stakes
-                        console.log(`Claiming all for stake ${stakeId} to burn SPWR...`);
+                    if (timeRemaining === 0) {
                         await claimAll(stakeId);
+                        claimedCount++;
                     }
                 }
-                // NEW: Verify SPWR balance is zero after burning
-                const finalSpwrBalanceWei = await spwrContract.methods.balanceOf(account).call();
-                const finalSpwrBalance = web3.utils.fromWei(finalSpwrBalanceWei, 'ether');
-                if (parseFloat(finalSpwrBalance) > 0) {
-                    console.warn("Some SPWR remains after burning:", finalSpwrBalance);
-                    updateStatus("Warning: Not all SPWR was burned. Please try again or check your stakes.", true);
-                } else {
-                    updateStatus("SPWR burned successfully. PLP and PWR delivered to your wallet.", false);
-                    confetti({
-                        particleCount: 150,
-                        spread: 90,
-                        origin: { y: 0.6 },
-                        colors: ['#ffdd00', '#00cc99', '#ff4d4d']
-                    });
+                if (claimedCount === 0) {
+                    updateStatus("No completed stakes available to claim.", true);
+                    return;
                 }
+                updateStatus(`Successfully claimed ${claimedCount} stake(s), SPWR surrendered. Check your wallet for PLP and PWR.`, false);
+                confetti({
+                    particleCount: 150,
+                    spread: 90,
+                    origin: { y: 0.6 },
+                    colors: ['#ffdd00', '#00cc99']
+                });
                 await updatePLPBalance();
-                await updateSPWRBalance();
+                await editSPWRBalance();
                 await updateStakesTable();
                 await updateTotalRewards();
             } catch (error) {
-                console.error("SPWR burn error:", error);
-                updateStatus(`SPWR burn failed: ${error.message}. Please try again.`, true);
+                console.error("Claim all stakes error:", error);
+                updateStatus(`Claim all stakes failed: ${error.message}. Please try again.`, true);
             }
         }
 
@@ -1153,7 +1118,7 @@
                 totalYieldDiv.innerText = `${totalYield}%`;
             }).catch(error => {
                 console.error("APR fetch error:", error);
-                const apr = 50 + bonus; // Fallback APR
+                const apr = 50 + bonus;
                 const periodYears = parseFloat(periodDays) / 365;
                 const totalYield = (apr * periodYears).toFixed(2);
                 totalYieldDiv.innerText = `${totalYield}%`;
@@ -1165,7 +1130,6 @@
             statusDiv.innerText = "Status: " + message;
             statusDiv.className = "status " + (isError ? "error" : "success");
             console.log("Status updated:", message);
-            // Auto-clear status after 10 seconds
             setTimeout(() => {
                 if (statusDiv.innerText === `Status: ${message}`) {
                     statusDiv.innerText = "Status: Waiting for action...";
