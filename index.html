@@ -876,7 +876,7 @@
                     } catch {
                         approveGas = 100000;
                     }
-                    await plpContract.methods.approve(contractAddress, amountWei).send({ from: account, gas: Math.ceil(approveGas * 1.2) });
+                    await plpContract.methods.approve(contractAddress, amountWei).send({ from: account, gas: Math.ceil(approveGas * 1.5) });
                     updateStatus("PLP approved successfully!", false);
                 }
                 updateStatus("Creating stake...", false);
@@ -886,7 +886,7 @@
                 } catch {
                     stakeGas = 500000;
                 }
-                const tx = await contract.methods.createStake(amountWei, durationSeconds).send({ from: account, gas: Math.ceil(stakeGas * 1.2) });
+                const tx = await contract.methods.createStake(amountWei, durationSeconds).send({ from: account, gas: Math.ceil(stakeGas * 1.5) });
                 updateStatus(`Stake created successfully! Tx: https://scan.mypinata.cloud/tx/${tx.transactionHash}`, false);
                 triggerConfetti();
                 await updatePLPBalance();
@@ -914,7 +914,12 @@
             if (isProcessing) return;
             isProcessing = true;
             const claimButton = document.querySelector(`#claim-rewards-${stakeId}`);
-            if (!claimButton) throw new Error("Claim Rewards button not found.");
+            if (!claimButton) {
+                updateStatus(`Error: Claim Rewards button for stake ${stakeId} not found.`, true);
+                console.error(`Button #claim-rewards-${stakeId} not found in DOM.`);
+                isProcessing = false;
+                return;
+            }
             claimButton.disabled = true;
             claimButton.classList.add('loading');
             try {
@@ -934,7 +939,7 @@
                 updateStatus(`Updating rewards for stake ${stakeId}...`, false);
                 try {
                     const updateGas = await contract.methods.calculateReward(stakeId).estimateGas({ from: account });
-                    await contract.methods.calculateReward(stakeId).send({ from: account, gas: Math.ceil(updateGas * 1.2) });
+                    await contract.methods.calculateReward(stakeId).send({ from: account, gas: Math.ceil(updateGas * 1.5) });
                 } catch (error) {
                     console.warn(`Failed to update reward for stake ${stakeId}:`, error);
                 }
@@ -945,7 +950,7 @@
                 } catch {
                     claimGas = 500000;
                 }
-                const claimTx = await contract.methods.claimRewards(stakeId).send({ from: account, gas: Math.ceil(claimGas * 1.2) });
+                const claimTx = await contract.methods.claimRewards(stakeId).send({ from: account, gas: Math.ceil(claimGas * 1.5) });
                 const finalPWR = await pwrContract.methods.balanceOf(account).call();
                 if (BigInt(finalPWR) <= BigInt(initialPWR) && BigInt(stakeDetails.rewardAmount) > 0) throw new Error("PWR rewards not delivered to wallet.");
                 updateStatus(`Rewards claimed successfully for stake ${stakeId}! PWR delivered. Tx: https://scan.mypinata.cloud/tx/${claimTx.transactionHash}`, false);
@@ -968,51 +973,111 @@
         }
 
         async function withdrawStake(stakeId) {
-            if (isProcessing) return;
+            if (isProcessing) {
+                updateStatus("Another transaction is in progress. Please wait.", true);
+                return;
+            }
             isProcessing = true;
             const claimButton = document.querySelector(`#claim-all-${stakeId}`);
-            if (!claimButton) throw new Error("Claim All button not found.");
+            if (!claimButton) {
+                updateStatus(`Error: Claim All button for stake ${stakeId} not found.`, true);
+                console.error(`Button #claim-all-${stakeId} not found in DOM.`);
+                isProcessing = false;
+                return;
+            }
             claimButton.disabled = true;
             claimButton.classList.add('loading');
             try {
-                if (!contract || !account || !plpContract || !pwrContract || !spwrContract) throw new Error("Wallet or contracts not initialized.");
+                // Verificar inicialización
+                if (!web3 || !contract || !account || !plpContract || !pwrContract || !spwrContract) {
+                    throw new Error("Wallet or contracts not initialized. Please reconnect your wallet.");
+                }
+                // Verificar red
                 const networkId = await web3.eth.net.getId();
-                if (Number(networkId) !== DESIRED_NETWORK_ID) throw new Error("Please switch to PulseChain.");
+                if (Number(networkId) !== DESIRED_NETWORK_ID) {
+                    throw new Error("Please switch to PulseChain (Chain ID 369) in your wallet.");
+                }
+                // Obtener detalles de la stake
+                console.log(`Fetching details for stake ${stakeId}...`);
                 const stakeDetails = await contract.methods.getStakeDetails(stakeId).call();
-                if (stakeDetails.owner.toLowerCase() !== account.toLowerCase()) throw new Error("You are not the owner of this stake.");
-                if (stakeDetails.claimed) throw new Error("Stake has already been claimed.");
+                console.log("Stake Details:", stakeDetails);
+                // Verificar propietario
+                if (stakeDetails.owner.toLowerCase() !== account.toLowerCase()) {
+                    throw new Error("You are not the owner of this stake.");
+                }
+                // Verificar estado
+                if (stakeDetails.claimed) {
+                    throw new Error("Stake has already been claimed.");
+                }
                 const currentTime = Math.floor(Date.now() / 1000);
-                if (BigInt(stakeDetails.endTime) > currentTime) throw new Error("Stake has not yet completed. Use Early Withdraw if needed.");
+                if (BigInt(stakeDetails.endTime) > currentTime) {
+                    throw new Error("Stake has not yet completed. Use Early Withdraw if needed.");
+                }
+                // Verificar ventana de reclamo
                 const claimWindow = await contract.methods.CLAIM_WINDOW().call();
-                if (currentTime > Number(stakeDetails.endTime) + Number(claimWindow)) throw new Error("Claim window has expired. Contact the team: https://t.me/+fM8oDk6HssdlNmVh.");
+                if (currentTime > Number(stakeDetails.endTime) + Number(claimWindow)) {
+                    throw new Error("Claim window has expired. Contact the team: https://t.me/+fM8oDk6HssdlNmVh.");
+                }
+                // Verificar fondos del contrato
                 const contractPWRBalance = await pwrContract.methods.balanceOf(contractAddress).call();
-                if (BigInt(contractPWRBalance) < BigInt(stakeDetails.rewardAmount)) throw new Error("Contract has insufficient PWR for rewards. Contact the team: https://t.me/+fM8oDk6HssdlNmVh.");
+                if (BigInt(contractPWRBalance) < BigInt(stakeDetails.rewardAmount)) {
+                    throw new Error("Contract has insufficient PWR for rewards. Contact the team: https://t.me/+fM8oDk6HssdlNmVh.");
+                }
+                // Obtener balances iniciales
                 const initialPLP = await plpContract.methods.balanceOf(account).call();
                 const initialPWR = await pwrContract.methods.balanceOf(account).call();
                 const initialSPWR = await spwrContract.methods.balanceOf(account).call();
+                console.log(`Initial PLP: ${web3.utils.fromWei(initialPLP, 'ether')} PLP, Initial PWR: ${web3.utils.fromWei(initialPWR, 'ether')} PWR, Initial SPWR: ${web3.utils.fromWei(initialSPWR, 'ether')} SPWR`);
+                // Actualizar recompensas
                 updateStatus(`Updating rewards for stake ${stakeId}...`, false);
                 try {
                     const updateGas = await contract.methods.calculateReward(stakeId).estimateGas({ from: account });
-                    await contract.methods.calculateReward(stakeId).send({ from: account, gas: Math.ceil(updateGas * 1.2) });
+                    await contract.methods.calculateReward(stakeId).send({ from: account, gas: Math.ceil(updateGas * 1.5) });
+                    console.log(`Rewards updated for stake ${stakeId}.`);
                 } catch (error) {
-                    console.warn(`Failed to update reward for stake ${stakeId}:`, error);
+                    console.warn(`Failed to update reward for stake ${stakeId}: ${error.message}`);
                 }
+                // Ejecutar retiro
                 updateStatus(`Withdrawing PLP and PWR for stake ${stakeId}...`, false);
                 let withdrawGas;
                 try {
+                    console.log(`Estimating gas for withdrawStake(${stakeId})...`);
                     withdrawGas = await contract.methods.withdrawStake(stakeId).estimateGas({ from: account });
-                } catch {
-                    withdrawGas = 750000;
+                    console.log(`Estimated gas: ${withdrawGas}`);
+                } catch (error) {
+                    console.warn(`Gas estimation failed: ${error.message}. Using fallback gas.`);
+                    withdrawGas = 1000000; // Gas alto para garantizar ejecución
                 }
-                const withdrawTx = await contract.methods.withdrawStake(stakeId).send({ from: account, gas: Math.ceil(withdrawGas * 1.2) });
+                const gasLimit = Math.ceil(withdrawGas * 1.5); // Margen para fluctuaciones
+                console.log(`Sending transaction with gas limit: ${gasLimit}`);
+                const withdrawTx = await contract.methods.withdrawStake(stakeId).send({
+                    from: account,
+                    gas: gasLimit,
+                    gasPrice: await web3.eth.getGasPrice()
+                });
+                console.log(`Transaction successful: https://scan.mypinata.cloud/tx/${withdrawTx.transactionHash}`);
+                // Verificar balances finales
                 const finalPLP = await plpContract.methods.balanceOf(account).call();
                 const finalPWR = await pwrContract.methods.balanceOf(account).call();
                 const finalSPWR = await spwrContract.methods.balanceOf(account).call();
-                if (BigInt(finalPLP) <= BigInt(initialPLP)) throw new Error("PLP not delivered to wallet.");
-                if (BigInt(finalPWR) <= BigInt(initialPWR) && BigInt(stakeDetails.rewardAmount) > 0) throw new Error("PWR rewards not delivered to wallet.");
-                if (BigInt(finalSPWR) >= BigInt(initialSPWR)) throw new Error("SPWR not surrendered.");
-                updateStatus(`Stake ${stakeId} claimed successfully! PLP and PWR delivered. Tx: https://scan.mypinata.cloud/tx/${withdrawTx.transactionHash}`, false);
+                console.log(`Final PLP: ${web3.utils.fromWei(finalPLP, 'ether')} PLP, Final PWR: ${web3.utils.fromWei(finalPWR, 'ether')} PWR, Final SPWR: ${web3.utils.fromWei(finalSPWR, 'ether')} SPWR`);
+                const plpIncreased = BigInt(finalPLP) > BigInt(initialPLP);
+                const pwrIncreased = BigInt(finalPWR) > BigInt(initialPWR) || BigInt(stakeDetails.rewardAmount) === 0;
+                const spwrDecreased = BigInt(finalSPWR) < BigInt(initialSPWR);
+                if (!plpIncreased) {
+                    console.warn("PLP balance did not increase as expected.");
+                    updateStatus(`Warning: Stake ${stakeId} withdrawal completed, but PLP may not have been delivered. Check your wallet. Tx: https://scan.mypinata.cloud/tx/${withdrawTx.transactionHash}`, false);
+                } else if (!pwrIncreased) {
+                    console.warn("PWR balance did not increase as expected.");
+                    updateStatus(`Warning: Stake ${stakeId} withdrawal completed, but PWR rewards may not have been delivered. Check your wallet. Tx: https://scan.mypinata.cloud/tx/${withdrawTx.transactionHash}`, false);
+                } else if (!spwrDecreased) {
+                    console.warn("SPWR balance did not decrease as expected.");
+                    updateStatus(`Warning: Stake ${stakeId} withdrawal completed, but SPWR may not have been surrendered. Check your wallet. Tx: https://scan.mypinata.cloud/tx/${withdrawTx.transactionHash}`, false);
+                } else {
+                    updateStatus(`Success: Stake ${stakeId} claimed successfully! PLP and PWR delivered to wallet. Tx: https://scan.mypinata.cloud/tx/${withdrawTx.transactionHash}`, false);
+                }
                 triggerConfetti();
+                // Actualizar interfaz
                 await updatePLPBalance();
                 await updatePWRBalance();
                 await updateSPWRBalance();
@@ -1020,9 +1085,13 @@
                 await updateStakesTable();
             } catch (error) {
                 let errorMessage = error.message;
-                if (error.code === 4001) errorMessage = "Transaction rejected by user.";
-                else if (error.data && error.data.message) errorMessage = error.data.message.includes("revert") ? error.data.message.split("revert ")[1] : error.data.message;
-                else if (error.transactionHash) errorMessage = `Transaction reverted. Check: https://scan.mypinata.cloud/tx/${error.transactionHash}`;
+                if (error.code === 4001) {
+                    errorMessage = "Transaction rejected by user.";
+                } else if (error.data && error.data.message) {
+                    errorMessage = error.data.message.includes("revert") ? error.data.message.split("revert ")[1] : error.data.message;
+                } else if (error.transactionHash) {
+                    errorMessage = `Transaction reverted. Check: https://scan.mypinata.cloud/tx/${error.transactionHash}`;
+                }
                 updateStatus(`Claim failed for stake ${stakeId}: ${errorMessage}`, true);
                 console.error(`Claim error for stake ${stakeId}:`, error);
             } finally {
@@ -1033,12 +1102,17 @@
         }
 
         async function earlyWithdrawStake(stakeId) {
-            if (isProcessing) return;
+            if (isProcessing) {
+                updateStatus("Another transaction is in progress. Please wait.", true);
+                return;
+            }
             isProcessing = true;
             const withdrawButton = document.querySelector(`#early-withdraw-${stakeId}`);
             if (!withdrawButton) {
+                updateStatus(`Error: Early Withdraw button for stake ${stakeId} not found.`, true);
+                console.error(`Button #early-withdraw-${stakeId} not found in DOM.`);
                 isProcessing = false;
-                throw new Error("Early Withdraw button not found.");
+                return;
             }
             withdrawButton.disabled = true;
             withdrawButton.classList.add('loading');
@@ -1052,37 +1126,33 @@
                 const currentTime = Math.floor(Date.now() / 1000);
                 if (BigInt(stakeDetails.endTime) <= currentTime) throw new Error("Stake is completed. Use 'Claim All' or 'Claim Rewards' instead.");
                 const initialPLP = await plpContract.methods.balanceOf(account).call();
-                let initialSPWR = '0';
-                if (spwrContract) {
-                    initialSPWR = await spwrContract.methods.balanceOf(account).call();
-                }
+                const initialSPWR = await spwrContract.methods.balanceOf(account).call();
                 updateStatus(`Initiating early withdrawal for stake ${stakeId} (50% PWR penalty applies)...`, false);
                 let gas;
                 try {
                     gas = await contract.methods.earlyWithdrawStake(stakeId).estimateGas({ from: account });
                 } catch (error) {
-                    console.warn(`Gas estimation failed for stake ${stakeId}:`, error);
-                    gas = 750000; // Fallback gas limit
+                    console.warn(`Gas estimation failed: ${error.message}. Using fallback gas.`);
+                    gas = 1000000;
                 }
                 const tx = await contract.methods.earlyWithdrawStake(stakeId).send({ 
                     from: account, 
-                    gas: Math.ceil(gas * 1.5) // Increased multiplier for safety
+                    gas: Math.ceil(gas * 1.5),
+                    gasPrice: await web3.eth.getGasPrice()
                 });
                 const finalPLP = await plpContract.methods.balanceOf(account).call();
-                let finalSPWR = '0';
-                if (spwrContract) {
-                    finalSPWR = await spwrContract.methods.balanceOf(account).call();
-                }
-                // Relaxed balance checks to account for minor discrepancies
-                if (BigInt(finalPLP) <= BigInt(initialPLP)) {
+                const finalSPWR = await spwrContract.methods.balanceOf(account).call();
+                const plpIncreased = BigInt(finalPLP) > BigInt(initialPLP);
+                const spwrDecreased = BigInt(finalSPWR) < BigInt(initialSPWR);
+                if (!plpIncreased) {
                     console.warn("PLP balance did not increase as expected.");
-                    updateStatus(`Early withdrawal for stake ${stakeId} completed, but PLP delivery may have issues. Tx: https://scan.mypinata.cloud/tx/${tx.transactionHash}`, false);
-                }
-                if (spwrContract && BigInt(finalSPWR) >= BigInt(initialSPWR)) {
+                    updateStatus(`Warning: Early withdrawal for stake ${stakeId} completed, but PLP may not have been delivered. Check your wallet. Tx: https://scan.mypinata.cloud/tx/${tx.transactionHash}`, false);
+                } else if (!spwrDecreased) {
                     console.warn("SPWR balance did not decrease as expected.");
-                    updateStatus(`Early withdrawal for stake ${stakeId} completed, but SPWR may not have been surrendered. Tx: https://scan.mypinata.cloud/tx/${tx.transactionHash}`, false);
+                    updateStatus(`Warning: Early withdrawal for stake ${stakeId} completed, but SPWR may not have been surrendered. Check your wallet. Tx: https://scan.mypinata.cloud/tx/${tx.transactionHash}`, false);
+                } else {
+                    updateStatus(`Success: Stake ${stakeId} withdrawn early with penalty! PLP returned. Tx: https://scan.mypinata.cloud/tx/${tx.transactionHash}`, false);
                 }
-                updateStatus(`Stake ${stakeId} withdrawn early with penalty! PLP returned. Tx: https://scan.mypinata.cloud/tx/${tx.transactionHash}`, false);
                 triggerConfetti();
                 await updatePLPBalance();
                 await updatePWRBalance();
@@ -1123,7 +1193,7 @@
                     let rewardAmountWei = stakeDetails.rewardAmount;
                     try {
                         const updateGas = await contract.methods.calculateReward(stakeId).estimateGas({ from: account });
-                        await contract.methods.calculateReward(stakeId).send({ from: account, gas: Math.ceil(updateGas * 1.2) });
+                        await contract.methods.calculateReward(stakeId).send({ from: account, gas: Math.ceil(updateGas * 1.5) });
                         const updatedStakeDetails = await contract.methods.getStakeDetails(stakeId).call();
                         rewardAmountWei = updatedStakeDetails.rewardAmount;
                     } catch (error) {
