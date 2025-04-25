@@ -1,4 +1,4 @@
-<<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -98,6 +98,22 @@
         .claim-all-btn:hover {
             background: linear-gradient(135deg, #ffea4d, #00e6b3);
             box-shadow: 0 0 15px rgba(0, 204, 153, 0.7);
+        }
+        .claim-rewards-btn {
+            background: #00cc99;
+            color: #000;
+        }
+        .claim-rewards-btn:hover {
+            background: #00e6b3;
+            box-shadow: 0 0 15px rgba(0, 204, 153, 0.7);
+        }
+        .withdraw-stake-btn {
+            background: #ff4d4d;
+            color: #fff;
+        }
+        .withdraw-stake-btn:hover {
+            background: #ff6666;
+            box-shadow: 0 0 15px rgba(255, 77, 77, 0.7);
         }
         .input-group { 
             margin: 10px 0; 
@@ -297,15 +313,15 @@
             font-size: 16px; 
         }
         .logo { 
-            position: relative; /* Changed from absolute to relative for better visibility */
+            position: relative;
             display: block;
             width: 80px; 
             height: 80px; 
             border-radius: 50%; 
             box-shadow: 0 0 10px rgba(255, 221, 0, 0.5); 
             transition: transform 0.3s ease; 
-            z-index: 10; /* Increased z-index to ensure visibility */
-            margin: 10px auto; /* Centered logo for better placement */
+            z-index: 10;
+            margin: 10px auto;
         }
         .logo:hover { 
             transform: scale(1.05); 
@@ -368,7 +384,6 @@
             z-index: 9999;
             pointer-events: none;
         }
-        /* Estilo para el modal de Why Invest */
         #whyInvestModal .modal-content {
             max-width: 800px;
             width: 90%;
@@ -694,7 +709,7 @@
             document.getElementById('connectWallet').addEventListener('click', detectWallets);
             document.getElementById('stakeButton').addEventListener('click', stakePLP);
             await updateTokenPrices();
-            setInterval(updateTokenPrices, 60000); // Actualizar cada 60 segundos
+            setInterval(updateTokenPrices, 60000);
             await updateTotalRewards();
             await updateStakesTable();
             console.log("Initialization complete");
@@ -779,7 +794,7 @@
                     const gasEstimate = await plpContract.methods.approve(contractAddress, amountWei).estimateGas({ from: account });
                     const approvalTx = await plpContract.methods.approve(contractAddress, amountWei).send({
                         from: account,
-                        gas: Math.floor(gasEstimate * 1.2),
+                        gas: Math.floor(gasEstimate * 1.5),
                         gasPrice
                     });
                     updateStatus(`PLP Approved (Tx: ${approvalTx.transactionHash.slice(0, 6)}...)`, false);
@@ -790,7 +805,7 @@
                 const stakeGasEstimate = await contract.methods.createStake(amountWei, durationSeconds).estimateGas({ from: account });
                 const stakeTx = await contract.methods.createStake(amountWei, durationSeconds).send({
                     from: account,
-                    gas: Math.floor(stakeGasEstimate * 1.2),
+                    gas: Math.floor(stakeGasEstimate * 1.5),
                     gasPrice: gasPriceStake
                 });
                 updateStatus(`Stake created (Tx: ${stakeTx.transactionHash.slice(0, 6)}...)`, false);
@@ -925,7 +940,11 @@
                         <td>
                             ${timeRemaining > 0 
                                 ? `<button onclick="earlyWithdraw(${stakeId})">Early Withdraw</button>`
-                                : `<button class="claim-all-btn" onclick="claimAll(${stakeId})">Claim All</button>`}
+                                : `
+                                    <button class="claim-rewards-btn" onclick="claimRewards(${stakeId})">Claim Rewards</button>
+                                    <button class="withdraw-stake-btn" onclick="withdrawStake(${stakeId})">Withdraw Stake</button>
+                                    <button class="claim-all-btn" onclick="claimAll(${stakeId})">Claim All</button>
+                                `}
                         </td>
                     `;
                     tbody.appendChild(row);
@@ -953,61 +972,9 @@
             }
         }
 
-        async function withdraw(stakeId) {
-            try {
-                const gasPrice = await web3.eth.getGasPrice();
-                const gasEstimate = await contract.methods.withdrawStake(stakeId).estimateGas({ from: account });
-                const tx = await contract.methods.withdrawStake(stakeId).send({
-                    from: account,
-                    gas: Math.floor(gasEstimate * 1.2),
-                    gasPrice
-                });
-                return tx;
-            } catch (error) {
-                console.error("Withdraw error:", error);
-                throw error;
-            }
-        }
-
-        async function earlyWithdraw(stakeId) {
-            try {
-                const gasPrice = await web3.eth.getGasPrice();
-                const gasEstimate = await contract.methods.earlyWithdrawStake(stakeId).estimateGas({ from: account });
-                const tx = await contract.methods.earlyWithdrawStake(stakeId).send({
-                    from: account,
-                    gas: Math.floor(gasEstimate * 1.2),
-                    gasPrice
-                });
-                updateStatus(`Early withdrawal completed (Tx: ${tx.transactionHash.slice(0, 6)}...)`, false);
-                await updatePLPBalance();
-                await updateSPWRBalance();
-                await updateStakesTable();
-                await updateTotalRewards();
-            } catch (error) {
-                console.error("Early withdraw error:", error);
-                updateStatus("Early withdraw failed: " + error.message, true);
-            }
-        }
-
         async function claimRewards(stakeId) {
             try {
-                const gasPrice = await web3.eth.getGasPrice();
-                const gasEstimate = await contract.methods.claimRewards(stakeId).estimateGas({ from: account });
-                const tx = await contract.methods.claimRewards(stakeId).send({
-                    from: account,
-                    gas: Math.floor(gasEstimate * 1.2),
-                    gasPrice
-                });
-                return tx;
-            } catch (error) {
-                console.error("Claim rewards error:", error);
-                throw error;
-            }
-        }
-
-        async function claimAll(stakeId) {
-            try {
-                // Obtener detalles del stake
+                // Verificar detalles del stake
                 const stake = await contract.methods.getStakeDetails(stakeId).call();
                 if (stake.claimed) {
                     updateStatus("Stake already claimed", true);
@@ -1018,9 +985,14 @@
                     return;
                 }
                 updateStatus("Claiming PWR rewards...", false);
-                const claimTx = await claimRewards(stakeId);
-                updateStatus("PWR rewards claimed. Withdrawing PLP...", false);
-                const withdrawTx = await withdraw(stakeId);
+                const gasPrice = await web3.eth.getGasPrice();
+                const gasEstimate = await contract.methods.claimRewards(stakeId).estimateGas({ from: account });
+                const tx = await contract.methods.claimRewards(stakeId).send({
+                    from: account,
+                    gas: Math.floor(gasEstimate * 1.5),
+                    gasPrice
+                });
+                updateStatus(`PWR rewards claimed (Tx: ${tx.transactionHash.slice(0, 6)}...)`, false);
                 confetti({
                     particleCount: 120,
                     spread: 80,
@@ -1028,14 +1000,102 @@
                     colors: ['#ffdd00', '#00cc99', '#ffffff'],
                     zIndex: 9999
                 });
-                updateStatus(`PLP withdrawn and PWR rewards claimed (Tx: ${withdrawTx.transactionHash.slice(0, 6)}...)`, false);
                 await updatePLPBalance();
                 await updateSPWRBalance();
                 await updateStakesTable();
                 await updateTotalRewards();
             } catch (error) {
+                console.error("Claim rewards error:", error);
+                updateStatus(`Claim rewards failed: ${error.message}`, true);
+            }
+        }
+
+        async function withdrawStake(stakeId) {
+            try {
+                // Verificar detalles del stake
+                const stake = await contract.methods.getStakeDetails(stakeId).call();
+                if (stake.claimed) {
+                    updateStatus("Stake already claimed", true);
+                    return;
+                }
+                if (stake.endTime > Math.floor(Date.now() / 1000)) {
+                    updateStatus("Stake period not yet finished", true);
+                    return;
+                }
+                updateStatus("Withdrawing PLP stake...", false);
+                const gasPrice = await web3.eth.getGasPrice();
+                const gasEstimate = await contract.methods.withdrawStake(stakeId).estimateGas({ from: account });
+                const tx = await contract.methods.withdrawStake(stakeId).send({
+                    from: account,
+                    gas: Math.floor(gasEstimate * 1.5),
+                    gasPrice
+                });
+                updateStatus(`PLP stake withdrawn (Tx: ${tx.transactionHash.slice(0, 6)}...)`, false);
+                confetti({
+                    particleCount: 120,
+                    spread: 80,
+                    origin: { y: 0.6 },
+                    colors: ['#ffdd00', '#00cc99', '#ffffff'],
+                    zIndex: 9999
+                });
+                await updatePLPBalance();
+                await updateSPWRBalance();
+                await updateStakesTable();
+                await updateTotalRewards();
+            } catch (error) {
+                console.error("Withdraw stake error:", error);
+                updateStatus(`Withdraw stake failed: ${error.message}`, true);
+            }
+        }
+
+        async function claimAll(stakeId) {
+            try {
+                // Verificar detalles del stake
+                const stake = await contract.methods.getStakeDetails(stakeId).call();
+                if (stake.claimed) {
+                    updateStatus("Stake already claimed", true);
+                    return;
+                }
+                if (stake.endTime > Math.floor(Date.now() / 1000)) {
+                    updateStatus("Stake period not yet finished", true);
+                    return;
+                }
+                // Reclamar recompensas primero
+                await claimRewards(stakeId);
+                // Retirar stake después
+                await withdrawStake(stakeId);
+                updateStatus("All actions completed successfully!", false);
+            } catch (error) {
                 console.error("Claim all error:", error);
-                updateStatus("Claim all failed: " + error.message, true);
+                updateStatus(`Claim all failed: ${error.message}`, true);
+            }
+        }
+
+        async function earlyWithdraw(stakeId) {
+            try {
+                updateStatus("Processing early withdrawal...", false);
+                const gasPrice = await web3.eth.getGasPrice();
+                const gasEstimate = await contract.methods.earlyWithdrawStake(stakeId).estimateGas({ from: account });
+                const tx = await contract.methods.earlyWithdrawStake(stakeId).send({
+                    from: account,
+                    gas: Math.floor(gasEstimate * 1.5),
+                    gasPrice
+                });
+                updateStatus(`Early withdrawal completed (Tx: ${tx.transactionHash.slice(0, 6)}...)`, false);
+                confetti({
+                    particleCount: 120,
+                    spread: 80,
+                    origin: { y: 0.6 },
+                    colors: ['#ffdd00', '#00cc99', '#ffffff'],
+                    zIndex: 9999
+                });
+                await updatePLPBalance();
+                await updateSPWRBalance();
+                await updateStakesTable();
+                await updateTotalRewards();
+            } catch (error) {
+                console.error("Early withdraw error:", error);
+                updateStatus(`Early withdraw failed: ${error.message}`, true);
             }
         }
 
