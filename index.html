@@ -778,12 +778,12 @@
                 if (BigInt(allowance) < BigInt(amountWei)) {
                     updateStatus("Approving PLP spending...", false);
                     const approveGas = await plpContract.methods.approve(contractAddress, amountWei).estimateGas({ from: account });
-                    await plpContract.methods.approve(contractAddress, amountWei).send({ from: account, gas: Math.ceil(approveGas * 1.3) });
+                    await plpContract.methods.approve(contractAddress, amountWei).send({ from: account, gas: Math.ceil(approveGas * 1.5) });
                     updateStatus("PLP approved successfully!", false);
                 }
                 updateStatus("Creating stake...", false);
                 const stakeGas = await contract.methods.createStake(amountWei, duration).estimateGas({ from: account });
-                await contract.methods.createStake(amountWei, duration).send({ from: account, gas: Math.ceil(stakeGas * 1.3) });
+                await contract.methods.createStake(amountWei, duration).send({ from: account, gas: Math.ceil(stakeGas * 1.5) });
                 updateStatus("Stake created successfully, SPWR received!", false);
                 triggerConfetti();
                 await updatePLPBalance();
@@ -812,13 +812,16 @@
                 const networkId = await web3.eth.net.getId();
                 if (Number(networkId) !== DESIRED_NETWORK_ID) throw new Error("Please switch to PulseChain.");
                 const stakeDetails = await contract.methods.getStakeDetails(stakeId).call();
+                console.log(`Stake ${stakeId} details:`, stakeDetails);
                 if (stakeDetails.claimed) throw new Error("Stake already claimed.");
                 if (BigInt(stakeDetails.endTime) > Math.floor(Date.now() / 1000)) throw new Error("Stake not yet completed.");
                 updateStatus(`Withdrawing stake ${stakeId} and claiming rewards...`, false);
                 const withdrawGas = await contract.methods.withdrawStake(stakeId).estimateGas({ from: account });
-                await contract.methods.withdrawStake(stakeId).send({ from: account, gas: Math.ceil(withdrawGas * 1.3) });
+                const withdrawTx = await contract.methods.withdrawStake(stakeId).send({ from: account, gas: Math.ceil(withdrawGas * 1.5) });
+                console.log(`Withdraw tx: https://scan.pulsechain.com/tx/${withdrawTx.transactionHash}`);
                 const claimGas = await contract.methods.claimRewards(stakeId).estimateGas({ from: account });
-                await contract.methods.claimRewards(stakeId).send({ from: account, gas: Math.ceil(claimGas * 1.3) });
+                const claimTx = await contract.methods.claimRewards(stakeId).send({ from: account, gas: Math.ceil(claimGas * 1.5) });
+                console.log(`Claim tx: https://scan.pulsechain.com/tx/${claimTx.transactionHash}`);
                 updateStatus(`Stake ${stakeId}: SPWR surrendered, PLP and PWR claimed successfully!`, false);
                 triggerConfetti();
                 await updatePLPBalance();
@@ -826,7 +829,19 @@
                 await updateStakesTable();
             } catch (error) {
                 console.error(`Claim error for stake ${stakeId}:`, error);
-                updateStatus(`Claim failed for stake ${stakeId}: ${error.message}`, true);
+                let errorMessage = error.message;
+                if (error.code === 4001) {
+                    errorMessage = "Transaction rejected by user.";
+                } else if (error.data) {
+                    const txHash = error.transactionHash;
+                    if (txHash) {
+                        const receipt = await web3.eth.getTransactionReceipt(txHash);
+                        if (receipt && receipt.status === false) {
+                            errorMessage = `Transaction reverted. Check logs at https://scan.pulsechain.com/tx/${txHash}`;
+                        }
+                    }
+                }
+                updateStatus(`Claim failed for stake ${stakeId}: ${errorMessage}`, true);
             } finally {
                 claimButton.disabled = false;
                 claimButton.classList.remove('loading');
@@ -845,10 +860,15 @@
                 const networkId = await web3.eth.net.getId();
                 if (Number(networkId) !== DESIRED_NETWORK_ID) throw new Error("Please switch to PulseChain.");
                 const stakeDetails = await contract.methods.getStakeDetails(stakeId).call();
+                console.log(`Stake ${stakeId} details:`, stakeDetails);
                 if (stakeDetails.claimed) throw new Error("Stake already claimed.");
+                if (BigInt(stakeDetails.endTime) <= Math.floor(Date.now() / 1000)) {
+                    throw new Error("Stake is completed. Use 'Claim All' to withdraw.");
+                }
                 updateStatus(`Early withdrawing stake ${stakeId}...`, false);
                 const gas = await contract.methods.earlyWithdrawStake(stakeId).estimateGas({ from: account });
-                await contract.methods.earlyWithdrawStake(stakeId).send({ from: account, gas: Math.ceil(gas * 1.3) });
+                const tx = await contract.methods.earlyWithdrawStake(stakeId).send({ from: account, gas: Math.ceil(gas * 1.5) });
+                console.log(`Early withdraw tx: https://scan.pulsechain.com/tx/${tx.transactionHash}`);
                 updateStatus(`Stake ${stakeId} withdrawn early with penalty, SPWR surrendered!`, false);
                 triggerConfetti();
                 await updatePLPBalance();
@@ -856,7 +876,19 @@
                 await updateStakesTable();
             } catch (error) {
                 console.error(`Early withdraw error for stake ${stakeId}:`, error);
-                updateStatus(`Early withdraw failed for stake ${stakeId}: ${error.message}`, true);
+                let errorMessage = error.message;
+                if (error.code === 4001) {
+                    errorMessage = "Transaction rejected by user.";
+                } else if (error.data) {
+                    const txHash = error.transactionHash;
+                    if (txHash) {
+                        const receipt = await web3.eth.getTransactionReceipt(txHash);
+                        if (receipt && receipt.status === false) {
+                            errorMessage = `Transaction reverted. Check logs at https://scan.pulsechain.com/tx/${txHash}`;
+                        }
+                    }
+                }
+                updateStatus(`Early withdraw failed for stake ${stakeId}: ${errorMessage}`, true);
             } finally {
                 withdrawButton.disabled = false;
                 withdrawButton.classList.remove('loading');
@@ -886,6 +918,7 @@
                     const endTime = new Date(Number(stakeDetails.endTime) * 1000).toLocaleDateString();
                     const timeRemaining = Number(stakeDetails.endTime) - Math.floor(Date.now() / 1000);
                     const apr = await contract.methods.currentAPR().call() / 100;
+                    const isCompleted = timeRemaining <= 0;
                     const row = document.createElement('tr');
                     row.innerHTML = `
                         <td>${stakeId}</td>
@@ -896,12 +929,11 @@
                         <td class="timer" id="timer-${stakeId}">${formatTimeRemaining(timeRemaining)}</td>
                         <td>${apr}%</td>
                         <td>
-                            ${timeRemaining <= 0 ? `<button class="claim-all-btn" id="claim-${stakeId}" onclick="claimAll(${stakeId})">Claim All</button>` : ''}
-                            <button id="withdraw-${stakeId}" onclick="earlyWithdraw(${stakeId})">Early Withdraw</button>
+                            ${isCompleted ? `<button class="claim-all-btn" id="claim-${stakeId}" onclick="claimAll(${stakeId})">Claim All</button>` : `<button id="withdraw-${stakeId}" onclick="earlyWithdraw(${stakeId})">Early Withdraw</button>`}
                         </td>
                     `;
                     stakesTable.appendChild(row);
-                    if (timeRemaining > 0) {
+                    if (!isCompleted) {
                         const timerInterval = setInterval(() => {
                             const newTimeRemaining = Number(stakeDetails.endTime) - Math.floor(Date.now() / 1000);
                             const timerElement = document.getElementById(`timer-${stakeId}`);
