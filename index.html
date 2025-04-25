@@ -4,17 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Power Stake</title>
-    <!-- Favicon estándar -->
+    <!-- Favicon -->
     <link rel="icon" type="image/x-icon" href="/favicon.ico">
-    <!-- Favicon en formato PNG -->
     <link rel="icon" type="image/png" href="/favicon-96x96.png">
-    <!-- Favicon en formato SVG -->
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
-    <!-- Para dispositivos Apple -->
     <link rel="apple-touch-icon" href="/apple-touch-icon.png">
-    <!-- Para aplicaciones web progresivas (PWA) -->
     <link rel="manifest" href="/site.webmanifest">
-    <!-- Iconos adicionales para PWA en diferentes tamaños -->
     <link rel="icon" type="image/png" href="/web-app-manifest-192x192.png">
     <link rel="icon" type="image/png" href="/web-app-manifest-512x512.png">
     <!-- FontAwesome -->
@@ -421,7 +416,7 @@
             .footer-buttons { flex-direction: column; gap: 10px; }
             .footer-buttons button { font-size: 12px; padding: 8px 12px; }
             .footer-buttons button i { font-size: 14px; }
-            .logo { width: 60px; height: 60px; margin: 5px auto; }
+            .logo { width: 60px; height: 60px; margin: 5px auto STREET; }
             .price-section { padding: 10px; }
             .price-section p { font-size: 12px; }
             #whyInvestModal .modal-content, .modal-content {
@@ -646,13 +641,13 @@
                 document.getElementById('account').innerText = `${account.slice(0, 6)}...${account.slice(-4)}`;
                 updateStatus(`Connected with ${walletName}: ${account.slice(0, 6)}...`, false);
                 console.log("Connected account:", account);
-                closeWalletModal();
                 await initializeContracts();
                 await updatePLPBalance();
                 await updateSPWRBalance();
                 await updateStakesTable();
                 provider.on('accountsChanged', handleAccountsChanged);
                 provider.on('chainChanged', () => window.location.reload());
+                closeWalletModal();
             } catch (error) {
                 console.error(`Connect error with ${walletName}:`, error);
                 updateStatus(`Error connecting with ${walletName}: ${error.message}`, true);
@@ -712,7 +707,7 @@
             document.getElementById('connectWallet').addEventListener('click', detectWallets);
             document.getElementById('stakeButton').addEventListener('click', stakePLP);
             await updateTokenPrices();
-            setInterval(updateTokenPrices, 60000); // Actualizar cada 60 segundos
+            setInterval(updateTokenPrices, 60000);
             await updateTotalRewards();
             await updateStakesTable();
             console.log("Initialization complete");
@@ -796,7 +791,7 @@
                     const gasEstimate = await plpContract.methods.approve(contractAddress, amountWei).estimateGas({ from: account });
                     const approvalTx = await plpContract.methods.approve(contractAddress, amountWei).send({
                         from: account,
-                        gas: Math.floor(gasEstimate * 1.5),
+                        gas: Math.floor(gasEstimate * 1.6),
                         gasPrice
                     });
                     updateStatus(`PLP Approved (Tx: <a href="https://scan.pulsechain.com/tx/${approvalTx.transactionHash}" target="_blank">${approvalTx.transactionHash.slice(0, 6)}...</a>)`, false);
@@ -807,7 +802,7 @@
                 const stakeGasEstimate = await contract.methods.createStake(amountWei, durationSeconds).estimateGas({ from: account });
                 const stakeTx = await contract.methods.createStake(amountWei, durationSeconds).send({
                     from: account,
-                    gas: Math.floor(stakeGasEstimate * 1.5),
+                    gas: Math.floor(stakeGasEstimate * 1.6),
                     gasPrice: gasPriceStake
                 });
                 updateStatus(`Stake created (Tx: <a href="https://scan.pulsechain.com/tx/${stakeTx.transactionHash}" target="_blank">${stakeTx.transactionHash.slice(0, 6)}...</a>)`, false);
@@ -818,6 +813,12 @@
                 document.getElementById('stakeAmount').value = '';
                 document.getElementById('stakePeriod').value = '';
                 updateStakeButtonState();
+                confetti({
+                    particleCount: 100,
+                    spread: 70,
+                    origin: { y: 0.6 },
+                    colors: ['#ffdd00', '#00cc99']
+                });
             } catch (error) {
                 console.error("Stake error:", error);
                 updateStatus(`Stake failed: ${error.message}`, true);
@@ -946,7 +947,7 @@
                                 : `<button class="claim-all-btn" onclick="showConfirmClaimModal(${stakeId})">Claim All</button>`}
                         </td>
                     `;
-ニア                    tbody.appendChild(row);
+                    tbody.appendChild(row);
                     console.log(`Stake ${stakeId} added to table, time remaining: ${timeRemaining}s`);
                     if (timeRemaining > 0) {
                         const timerInterval = setInterval(() => {
@@ -974,96 +975,33 @@
             }
         }
 
-        async function withdraw(stakeId) {
-            try {
-                const gasPrice = await web3.eth.getGasPrice();
-                const gasEstimate = await contract.methods.withdrawStake(stakeId).estimateGas({ from: account });
-                const nonce = await web3.eth.getTransactionCount(account, 'pending');
-                const tx = await contract.methods.withdrawStake(stakeId).send({
-                    from: account,
-                    gas: Math.floor(gasEstimate * 1.6),
-                    gasPrice,
-                    nonce
-                });
-                const receipt = await web3.eth.getTransactionReceipt(tx.transactionHash);
-                if (!receipt || receipt.status === false) {
-                    throw new Error("Transaction failed or was reverted");
-                }
-                return tx;
-            } catch (error) {
-                console.error("Withdraw error:", error);
-                throw error;
-            }
-        }
-
         async function earlyWithdraw(stakeId) {
             try {
+                console.log(`Initiating early withdraw for Stake ID: ${stakeId}`);
+                updateStatus("Processing early withdrawal...", false);
                 const gasPrice = await web3.eth.getGasPrice();
                 const gasEstimate = await contract.methods.earlyWithdrawStake(stakeId).estimateGas({ from: account });
-                const nonce = await web3.eth.getTransactionCount(account, 'pending');
                 const tx = await contract.methods.earlyWithdrawStake(stakeId).send({
                     from: account,
                     gas: Math.floor(gasEstimate * 1.6),
-                    gasPrice,
-                    nonce
+                    gasPrice
                 });
                 updateStatus(`Early withdrawal completed (Tx: <a href="https://scan.pulsechain.com/tx/${tx.transactionHash}" target="_blank">${tx.transactionHash.slice(0, 6)}...</a>)`, false);
-                await updatePLPBalance();
-                await updateSPWRBalance();
-                await updateStakesTable();
-                await updateTotalRewards();
+                await Promise.all([
+                    updatePLPBalance(),
+                    updateSPWRBalance(),
+                    updateStakesTable(),
+                    updateTotalRewards()
+                ]);
             } catch (error) {
                 console.error("Early withdraw error:", error);
-                updateStatus("Early withdraw failed: " + error.message, true);
-            }
-        }
-
-        async function claimRewards(stakeId) {
-            try {
-                const gasPrice = await web3.eth.getGasPrice();
-                const gasEstimate = await contract.methods.claimRewards(stakeId).estimateGas({ from: account });
-                const nonce = await web3.eth.getTransactionCount(account, 'pending');
-                const tx = await contract.methods.claimRewards(stakeId).send({
-                    from: account,
-                    gas: Math.floor(gasEstimate * 1.6),
-                    gasPrice,
-                    nonce
-                });
-                const receipt = await web3.eth.getTransactionReceipt(tx.transactionHash);
-                if (!receipt || receipt.status === false) {
-                    throw new Error("Transaction failed or was reverted");
-                }
-                return tx;
-            } catch (error) {
-                console.error("Claim rewards error:", error);
-                throw error;
-            }
-        }
-
-        async function getRevertReason(stakeId, method) {
-            try {
-                const data = method === 'withdraw' 
-                    ? contract.methods.withdrawStake(stakeId).encodeABI()
-                    : contract.methods.claimRewards(stakeId).encodeABI();
-                await web3.eth.call({
-                    to: contractAddress,
-                    from: account,
-                    data
-                });
-                return null; // Si no hay error, retorna null
-            } catch (error) {
-                console.error(`Revert reason for ${method}:`, error);
-                if (error.message.includes('revert')) {
-                    const reason = error.message.match(/revert\s+(.+)/i)?.[1] || error.message;
-                    return reason || "Unknown revert reason";
-                }
-                return error.message;
+                updateStatus(`Early withdraw failed: ${error.message}`, true);
             }
         }
 
         function showConfirmClaimModal(stakeId) {
-            console.log(`Attempting to show confirm claim modal for Stake ID: ${stakeId}`);
-            if (!stakeId || isNaN(stakeId)) {
+            console.log(`Showing confirm claim modal for Stake ID: ${stakeId}`);
+            if (!stakeId || isNaN(stakeId) || stakeId < 0) {
                 console.error("Invalid stakeId:", stakeId);
                 updateStatus("Error: Invalid stake ID. Please try again.", true);
                 return;
@@ -1071,6 +1009,7 @@
             pendingClaimStakeId = parseInt(stakeId);
             console.log(`pendingClaimStakeId set to: ${pendingClaimStakeId}`);
             document.getElementById('confirmStakeId').innerText = stakeId;
+            document.getElementById('confirmClaimMessage').innerHTML = `Loading stake details for Stake ID ${stakeId}...`;
             contract.methods.getStakeDetails(stakeId).call().then(stake => {
                 console.log(`Fetched stake details for ID ${stakeId}:`, stake);
                 const plpAmount = parseFloat(web3.utils.fromWei(stake.plpAmount, 'ether')).toFixed(4);
@@ -1093,16 +1032,15 @@
 
         function closeConfirmClaimModal() {
             document.getElementById('confirmClaimModal').style.display = 'none';
-            console.log(`Confirm claim modal closed, pendingClaimStakeId: ${pendingClaimStakeId}`);
-            // No borramos pendingClaimStakeId aquí para permitir reintentos si el cierre fue accidental
+            console.log(`Confirm claim modal closed, retaining pendingClaimStakeId: ${pendingClaimStakeId}`);
         }
 
         async function proceedClaimAll() {
             const stakeId = pendingClaimStakeId;
             console.log(`proceedClaimAll called with stakeId: ${stakeId}`);
-            if (!stakeId || isNaN(stakeId)) {
+            if (!stakeId || isNaN(stakeId) || stakeId < 0) {
                 console.error("No valid stake selected for claiming, pendingClaimStakeId:", pendingClaimStakeId);
-                updateStatus("Error: No valid stake ID selected. Please try clicking Claim All again.", true);
+                updateStatus("Error: No valid stake ID selected. Please click 'Claim All' again.", true);
                 closeConfirmClaimModal();
                 return;
             }
@@ -1110,7 +1048,6 @@
             try {
                 console.log(`Processing claim for Stake ID: ${stakeId}`);
                 closeConfirmClaimModal();
-                // Validaciones iniciales
                 if (!account) throw new Error("Wallet not connected");
                 if (!web3 || !contract || !plpContract) throw new Error("Contract not initialized");
                 const networkId = await web3.eth.net.getId();
@@ -1156,20 +1093,8 @@
                     throw new Error("Insufficient PLS balance for gas fees. Need at least 0.01 PLS.");
                 }
 
-                // Simular transacciones para detectar errores
-                let revertReason = await getRevertReason(stakeId, 'withdraw');
-                if (revertReason) {
-                    throw new Error(`Withdraw will revert: ${revertReason}`);
-                }
-                revertReason = await getRevertReason(stakeId, 'claimRewards');
-                if (revertReason) {
-                    throw new Error(`Claim rewards will revert: ${revertReason}`);
-                }
-
-                // Actualizar estado en la interfaz
-                updateStatus(`Processing withdrawal of ${plpAmount} PLP...`, false);
-
                 // Paso 1: Retirar el stake (withdraw)
+                updateStatus(`Processing withdrawal of ${plpAmount} PLP...`, false);
                 let withdrawTx;
                 let attempts = 0;
                 const maxAttempts = 3;
@@ -1193,17 +1118,14 @@
                             `Withdrawn ${plpAmount} PLP (Tx: <a href="https://scan.pulsechain.com/tx/${withdrawTx.transactionHash}" target="_blank">${withdrawTx.transactionHash.slice(0, 6)}...</a>)`,
                             false
                         );
-                        await Promise.all([updatePLPBalance(), updateSPWRBalance(), updateStakesTable()]);
                         break;
                     } catch (error) {
                         attempts++;
                         console.error(`Withdraw attempt ${attempts} failed:`, error);
                         if (attempts >= maxAttempts) {
-                            const revertReason = await getRevertReason(stakeId, 'withdraw') || error.message;
-                            throw new Error(`Withdraw failed after ${maxAttempts} attempts: ${revertReason}`);
+                            throw new Error(`Withdraw failed after ${maxAttempts} attempts: ${error.message}`);
                         }
-                        const waitTime = error.message.includes("nonce") ? 5000 : 3000;
-                        await new Promise(resolve => setTimeout(resolve, waitTime));
+                        await new Promise(resolve => setTimeout(resolve, 3000));
                     }
                 }
 
@@ -1231,45 +1153,34 @@
                             `Claimed ${rewardAmount} PWR (Tx: <a href="https://scan.pulsechain.com/tx/${claimTx.transactionHash}" target="_blank">${claimTx.transactionHash.slice(0, 6)}...</a>)`,
                             false
                         );
-                        await Promise.all([updatePLPBalance(), updateSPWRBalance(), updateStakesTable()]);
                         break;
                     } catch (error) {
                         attempts++;
                         console.error(`Claim rewards attempt ${attempts} failed:`, error);
                         if (attempts >= maxAttempts) {
-                            const revertReason = await getRevertReason(stakeId, 'claimRewards') || error.message;
-                            throw new Error(`Claim rewards failed after ${maxAttempts} attempts: ${revertReason}`);
+                            throw new Error(`Claim rewards failed after ${maxAttempts} attempts: ${error.message}`);
                         }
-                        const waitTime = error.message.includes("nonce") ? 5000 : 3000;
-                        await new Promise(resolve => setTimeout(resolve, waitTime));
+                        await new Promise(resolve => setTimeout(resolve, 3000));
                     }
                 }
 
-                // Efecto de confeti secuencial
+                // Efecto de confeti
                 confetti({
                     particleCount: 100,
                     spread: 70,
                     origin: { y: 0.6 },
-                    colors: ['#ffdd00', '#00cc99'],
-                    zIndex: 9999
+                    colors: ['#ffdd00', '#00cc99']
                 });
                 setTimeout(() => {
                     confetti({
                         particleCount: 100,
                         spread: 100,
                         origin: { y: 0.8 },
-                        colors: ['#ffffff', '#00cc99'],
-                        zIndex: 9999
+                        colors: ['#ffffff', '#00cc99']
                     });
                 }, 1000);
 
-                // Actualizar estado final
-                updateStatus(
-                    `Success: Claimed ${plpAmount} PLP and ${rewardAmount} PWR! (Withdraw Tx: <a href="https://scan.pulsechain.com/tx/${withdrawTx.transactionHash}" target="_blank">${withdrawTx.transactionHash.slice(0, 6)}...</a>, Claim Tx: <a href="https://scan.pulsechain.com/tx/${claimTx.transactionHash}" target="_blank">${claimTx.transactionHash.slice(0, 6)}...</a>)`,
-                    false
-                );
-
-                // Actualizar datos en la interfaz
+                // Actualizar datos
                 await Promise.all([
                     updatePLPBalance(),
                     updateSPWRBalance(),
@@ -1277,11 +1188,14 @@
                     updateTotalRewards()
                 ]);
 
-                // Limpiar pendingClaimStakeId y mensaje de estado después de 20 segundos
+                updateStatus(
+                    `Success: Claimed ${plpAmount} PLP and ${rewardAmount} PWR! (Withdraw Tx: <a href="https://scan.pulsechain.com/tx/${withdrawTx.transactionHash}" target="_blank">${withdrawTx.transactionHash.slice(0, 6)}...</a>, Claim Tx: <a href="https://scan.pulsechain.com/tx/${claimTx.transactionHash}" target="_blank">${claimTx.transactionHash.slice(0, 6)}...</a>)`,
+                    false
+                );
+
+                // Limpiar pendingClaimStakeId
                 pendingClaimStakeId = null;
-                setTimeout(() => {
-                    updateStatus("Waiting for action...", false);
-                }, 20000);
+                setTimeout(() => updateStatus("Waiting for action...", false), 20000);
 
             } catch (error) {
                 console.error("Claim all error:", error);
@@ -1289,7 +1203,7 @@
                 if (errorMessage.includes("revert")) {
                     errorMessage = `Transaction reverted: ${errorMessage}`;
                 } else if (errorMessage.includes("nonce")) {
-                    errorMessage = "Nonce error. Please wait a moment and try again.";
+                    errorMessage = "Nonce error. Please wait and try again.";
                 } else if (errorMessage.includes("gas")) {
                     errorMessage = "Gas error. Try increasing gas limit in your wallet.";
                 } else if (errorMessage.includes("denied")) {
@@ -1297,9 +1211,7 @@
                 }
                 updateStatus(`Claim all failed: ${errorMessage}`, true);
                 pendingClaimStakeId = null;
-                setTimeout(() => {
-                    updateStatus("Waiting for action...", false);
-                }, 20000);
+                setTimeout(() => updateStatus("Waiting for action...", false), 20000);
             }
         }
 
