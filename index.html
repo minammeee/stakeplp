@@ -268,6 +268,10 @@
             color: #00cc99; 
             font-size: 10px; 
         }
+        .warning { 
+            color: #ff4d4d; 
+            font-size: 10px; 
+        }
         .no-data { 
             text-align: center; 
             padding: 15px; 
@@ -427,7 +431,7 @@
             .footer-buttons button { font-size: 12px; padding: 8px 12px; }
             .footer-buttons button i { font-size: 14px; }
             .logo { width: 60px; height: 60px; margin: 5px auto; }
-            gefunden: .price-section { padding: 10px; }
+            .price-section { padding: 10px; }
             .price-section p { font-size: 12px; }
             #whyInvestModal .modal-content {
                 max-width: 95%;
@@ -579,6 +583,7 @@
         const plpAddressRaw = "0xe5c56E4a8f8d96e3A91b18D83b7f0c36663C9a74";
         const pwrAddressRaw = "0x3Eb3B7b3D95Cb3699295D7868F85e43b56AeeFcB";
         const DESIRED_NETWORK_ID = 369;
+        const CLAIM_WINDOW = 30 * 24 * 60 * 60; // 30 days in seconds
         let contractAddress, plpAddress, pwrAddress;
         let web3, account, contract, plpContract, pwrContract, spwrContract, pwrPriceUsd = 0, spwrAddress, selectedProvider;
         let isProcessing = false;
@@ -797,12 +802,12 @@
                 if (BigInt(allowance) < BigInt(amountWei)) {
                     updateStatus("Approving PLP spending...", false);
                     const approveGas = await plpContract.methods.approve(contractAddress, amountWei).estimateGas({ from: account });
-                    await plpContract.methods.approve(contractAddress, amountWei).send({ from: account, gas: Math.ceil(approveGas * 1.5) });
+                    await plpContract.methods.approve(contractAddress, amountWei).send({ from: account, gas: Math.ceil(approveGas * 2.0) });
                     updateStatus("PLP approved successfully!", false);
                 }
                 updateStatus("Creating stake...", false);
-                const stakeGas = await contract.methods.createStake(amountWei, duration).estimateGas({ from: account });
-                await contract.methods.createStake(amountWei, duration).send({ from: account, gas: Math.ceil(stakeGas * 1.5) });
+                const stakeGas = await contract.methods.createStake(amountWei, Number(duration) * 24 * 60 * 60).estimateGas({ from: account });
+                await contract.methods.createStake(amountWei, Number(duration) * 24 * 60 * 60).send({ from: account, gas: Math.ceil(stakeGas * 2.0) });
                 updateStatus("Stake created successfully, SPWR received!", false);
                 triggerConfetti();
                 await updatePLPBalance();
@@ -833,27 +838,29 @@
                 if (Number(networkId) !== DESIRED_NETWORK_ID) throw new Error("Please switch to PulseChain.");
                 const stakeDetails = await contract.methods.getStakeDetails(stakeId).call();
                 console.log(`Stake ${stakeId} details:`, stakeDetails);
-                if (stakeDetails.claimed) throw new Error("Stake already claimed.");
+                if (stakeDetails.claimed) throw new Error("Stake already withdrawn.");
                 if (BigInt(stakeDetails.endTime) > Math.floor(Date.now() / 1000)) throw new Error("Stake not yet completed.");
                 // Store initial balances for verification
                 const initialPLP = await plpContract.methods.balanceOf(account).call();
                 const initialPWR = await pwrContract.methods.balanceOf(account).call();
                 const initialSPWR = await spwrContract.methods.balanceOf(account).call();
-                updateStatus(`Withdrawing stake ${stakeId} (PLP) and claiming rewards (PWR)...`, false);
-                // Withdraw stake (returns PLP, burns SPWR)
-                const withdrawGas = await contract.methods.withdrawStake(stakeId).estimateGas({ from: account });
-                const withdrawTx = await contract.methods.withdrawStake(stakeId).send({ from: account, gas: Math.ceil(withdrawGas * 1.5) });
-                console.log(`Withdraw PLP tx: https://scan.pulsechain.com/tx/${withdrawTx.transactionHash}`);
-                // Claim rewards (delivers PWR)
-                const claimGas = await contract.methods.claimRewards(stakeId).estimateGas({ from: account });
-                const claimTx = await contract.methods.claimRewards(stakeId).send({ from: account, gas: Math.ceil(claimGas * 1.5) });
-                console.log(`Claim PWR tx: https://scan.pulsechain.com/tx/${claimTx.transactionHash}`);
+                updateStatus(`Withdrawing stake ${stakeId} (PLP and PWR)...`, false);
+                // Call withdrawStake (returns PLP, burns SPWR, delivers PWR)
+                let withdrawGas;
+                try {
+                    withdrawGas = await contract.methods.withdrawStake(stakeId).estimateGas({ from: account });
+                } catch (gasError) {
+                    console.error(`Gas estimation failed for stake ${stakeId}:`, gasError);
+                    withdrawGas = 500000; // Fallback gas limit
+                }
+                const withdrawTx = await contract.methods.withdrawStake(stakeId).send({ from: account, gas: Math.ceil(withdrawGas * 2.0) });
+                console.log(`Withdraw tx: https://scan.pulsechain.com/tx/${withdrawTx.transactionHash}`);
                 // Verify balances
                 const finalPLP = await plpContract.methods.balanceOf(account).call();
                 const finalPWR = await pwrContract.methods.balanceOf(account).call();
                 const finalSPWR = await spwrContract.methods.balanceOf(account).call();
                 if (BigInt(finalPLP) <= BigInt(initialPLP)) throw new Error("PLP not delivered to wallet.");
-                if (BigInt(finalPWR) <= BigInt(initialPWR)) throw new Error("PWR not delivered to wallet.");
+                if (BigInt(finalPWR) <= BigInt(initialPWR) && BigInt(stakeDetails.rewardAmount) > 0) throw new Error("PWR not delivered to wallet.");
                 if (BigInt(finalSPWR) >= BigInt(initialSPWR)) throw new Error("SPWR not surrendered.");
                 updateStatus(`Stake ${stakeId}: SPWR surrendered, PLP and PWR delivered!`, false);
                 triggerConfetti();
@@ -867,12 +874,21 @@
                 if (error.code === 4001) {
                     errorMessage = "Transaction rejected by user.";
                 } else if (error.data) {
-                    const txHash = error.transactionHash;
-                    if (txHash) {
-                        const receipt = await web3.eth.getTransactionReceipt(txHash);
-                        if (receipt && receipt.status === false) {
-                            errorMessage = `Transaction reverted. Check logs at https://scan.pulsechain.com/tx/${txHash}`;
+                    try {
+                        const txHash = error.transactionHash;
+                        if (txHash) {
+                            const receipt = await web3.eth.getTransactionReceipt(txHash);
+                            if (receipt && receipt.status === false) {
+                                // Attempt to get revert reason
+                                try {
+                                    await contract.methods.withdrawStake(stakeId).call({ from: account });
+                                } catch (callError) {
+                                    errorMessage = callError.message.includes("revert") ? callError.message.split("revert ")[1] : `Transaction reverted. Check logs at https://scan.pulsechain.com/tx/${txHash}`;
+                                }
+                            }
                         }
+                    } catch (receiptError) {
+                        console.error("Error fetching receipt:", receiptError);
                     }
                 }
                 updateStatus(`Claim failed for stake ${stakeId}: ${errorMessage}`, true);
@@ -895,13 +911,19 @@
                 if (Number(networkId) !== DESIRED_NETWORK_ID) throw new Error("Please switch to PulseChain.");
                 const stakeDetails = await contract.methods.getStakeDetails(stakeId).call();
                 console.log(`Stake ${stakeId} details:`, stakeDetails);
-                if (stakeDetails.claimed) throw new Error("Stake already claimed.");
+                if (stakeDetails.claimed) throw new Error("Stake already withdrawn.");
                 if (BigInt(stakeDetails.endTime) <= Math.floor(Date.now() / 1000)) {
                     throw new Error("Stake is completed. Use 'Claim All' to withdraw.");
                 }
                 updateStatus(`Early withdrawing stake ${stakeId}...`, false);
-                const gas = await contract.methods.earlyWithdrawStake(stakeId).estimateGas({ from: account });
-                const tx = await contract.methods.earlyWithdrawStake(stakeId).send({ from: account, gas: Math.ceil(gas * 1.5) });
+                let gas;
+                try {
+                    gas = await contract.methods.earlyWithdrawStake(stakeId).estimateGas({ from: account });
+                } catch (gasError) {
+                    console.error(`Gas estimation failed for stake ${stakeId}:`, gasError);
+                    gas = 500000; // Fallback gas limit
+                }
+                const tx = await contract.methods.earlyWithdrawStake(stakeId).send({ from: account, gas: Math.ceil(gas * 2.0) });
                 console.log(`Early withdraw tx: https://scan.pulsechain.com/tx/${tx.transactionHash}`);
                 updateStatus(`Stake ${stakeId} withdrawn early with penalty, SPWR surrendered!`, false);
                 triggerConfetti();
@@ -915,12 +937,21 @@
                 if (error.code === 4001) {
                     errorMessage = "Transaction rejected by user.";
                 } else if (error.data) {
-                    const txHash = error.transactionHash;
-                    if (txHash) {
-                        const receipt = await web3.eth.getTransactionReceipt(txHash);
-                        if (receipt && receipt.status === false) {
-                            errorMessage = `Transaction reverted. Check logs at https://scan.pulsechain.com/tx/${txHash}`;
+                    try {
+                        const txHash = error.transactionHash;
+                        if (txHash) {
+                            const receipt = await web3.eth.getTransactionReceipt(txHash);
+                            if (receipt && receipt.status === false) {
+                                // Attempt to get revert reason
+                                try {
+                                    await contract.methods.earlyWithdrawStake(stakeId).call({ from: account });
+                                } catch (callError) {
+                                    errorMessage = callError.message.includes("revert") ? callError.message.split("revert ")[1] : `Transaction reverted. Check logs at https://scan.pulsechain.com/tx/${txHash}`;
+                                }
+                            }
                         }
+                    } catch (receiptError) {
+                        console.error("Error fetching receipt:", receiptError);
                     }
                 }
                 updateStatus(`Early withdraw failed for stake ${stakeId}: ${errorMessage}`, true);
@@ -948,12 +979,15 @@
                     const stakeDetails = await contract.methods.getStakeDetails(stakeId).call();
                     if (stakeDetails.claimed) continue;
                     const plpAmount = web3.utils.fromWei(stakeDetails.plpAmount, 'ether');
-                    const rewardAmount = web3.utils.fromWei(stakeDetails.rewardAmount, 'ether');
+                    // Fetch updated reward amount
+                    const rewardAmountWei = await contract.methods.calculateReward(stakeId).call();
+                    const rewardAmount = web3.utils.fromWei(rewardAmountWei, 'ether');
                     const startTime = new Date(Number(stakeDetails.startTime) * 1000).toLocaleDateString();
                     const endTime = new Date(Number(stakeDetails.endTime) * 1000).toLocaleDateString();
                     const timeRemaining = Number(stakeDetails.endTime) - Math.floor(Date.now() / 1000);
                     const apr = await contract.methods.currentAPR().call() / 100;
                     const isCompleted = timeRemaining <= 0;
+                    const isPastClaimWindow = isCompleted && (Math.floor(Date.now() / 1000) > Number(stakeDetails.endTime) + CLAIM_WINDOW);
                     const row = document.createElement('tr');
                     row.innerHTML = `
                         <td>${stakeId}</td>
@@ -965,6 +999,7 @@
                         <td>${apr}%</td>
                         <td>
                             ${isCompleted ? `<button class="claim-all-btn" id="claim-${stakeId}" onclick="claimAll(${stakeId})">Claim All</button>` : `<button id="withdraw-${stakeId}" onclick="earlyWithdraw(${stakeId})">Early Withdraw</button>`}
+                            ${isPastClaimWindow ? '<div class="warning">Past 30-day claim window for rewards</div>' : ''}
                         </td>
                     `;
                     stakesTable.appendChild(row);
