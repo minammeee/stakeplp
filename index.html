@@ -1347,6 +1347,19 @@
             log('UI', 'Stake button state updated', { isDisabled });
         }
 
+        function updateYieldEstimate() {
+            const amount = parseFloat(document.getElementById('stakeAmount').value) || 0;
+            const periodDays = parseInt(document.getElementById('stakePeriod').value) || 0;
+            if (!amount || !periodDays) {
+                document.getElementById('totalYield').innerText = '0%';
+                return;
+            }
+            const bonus = {30: 0, 60: 10, 90: 20, 180: 40, 360: 80}[periodDays] || 0;
+            const apr = parseInt(state.cache.apr?.value || 50) + bonus;
+            const yieldEstimate = (amount * apr / 100) * (periodDays / 365);
+            document.getElementById('totalYield').innerText = `${yieldEstimate.toFixed(2)} PWR`;
+        }
+
         async function updateStakesTable() {
             log('STAKES', 'Updating stakes table');
             const tbody = document.getElementById('stakesTable');
@@ -1500,7 +1513,8 @@
 
         function closeConfirmClaimModal() {
             document.getElementById('confirmClaimModal').style.display = 'none';
-            log('CLAIM', 'Confirm claim modal closed', { pendingClaimStakeId: state.pendingClaimStakeId });
+            state.pendingClaimStakeId = null;
+            log('CLAIM', 'Confirm claim modal closed');
         }
 
         async function proceedClaimAll() {
@@ -1570,58 +1584,41 @@
 
                 // Efecto visual
                 confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 }, colors: ['#ffdd00', '#00cc99'] });
-                setTimeout(() => confetti({ particleCount: 100, spread: 100, origin: { y: 0.8 }, colors: ['#ffffff', '#00cc99'] }), 1000);
 
-                // Actualizar
+                // Actualizar datos
                 await updateAllData();
-                state.pendingClaimStakeId = null;
             } catch (error) {
                 log('CLAIM', 'Claim error', { error });
                 showNotification(`Claim failed: ${error.message}`, true);
-                state.pendingClaimStakeId = null;
             } finally {
                 state.isProcessing = false;
             }
         }
 
-        function updateYieldEstimate() {
-            const amount = document.getElementById('stakeAmount').value;
-            const periodDays = document.getElementById('stakePeriod').value;
-            const totalYieldDiv = document.getElementById('totalYield');
-            if (!amount || !periodDays || parseFloat(amount) <= 0) {
-                totalYieldDiv.innerText = '0%';
-                return;
-            }
-            const bonus = {30: 0, 60: 10, 90: 20, 180: 40, 360: 80}[periodDays] || 0;
-            const apr = parseInt(state.cache.apr?.value || 50) + bonus;
-            const periodYears = parseFloat(periodDays) / 365;
-            totalYieldDiv.innerText = `${(apr * periodYears).toFixed(2)}%`;
-        }
-
-        async function showWhyInvest() {
-            try {
-                log('MODAL', 'Loading Why Invest content');
-                showNotification('Loading Why Invest...');
-                const response = await fetch('https://raw.githubusercontent.com/minammeee/stakeplp/main/why-invest-pwr.html');
-                if (!response.ok) throw new Error(`HTTP error: ${response.status}`);
-                document.getElementById('whyInvestContent').innerHTML = await response.text();
-                document.getElementById('whyInvestModal').style.display = 'block';
-                showNotification('Why Invest loaded');
-            } catch (error) {
-                log('MODAL', 'Error loading Why Invest', { error });
-                showNotification('Failed to load Why Invest', true);
-                document.getElementById('whyInvestContent').innerHTML = '<p>Error loading content.</p>';
-                document.getElementById('whyInvestModal').style.display = 'block';
-            }
+        function showWhyInvest() {
+            const modal = document.getElementById('whyInvestModal');
+            const content = document.getElementById('whyInvestContent');
+            content.innerHTML = `
+                <h3>Why Stake PLP?</h3>
+                <p>Staking PLP allows you to earn PWR rewards with attractive APRs.</p>
+                <p>Benefits include:</p>
+                <ul style="text-align: left; margin: 10px 0;">
+                    <li>High yield opportunities</li>
+                    <li>Flexible staking periods</li>
+                    <li>Secure and transparent on PulseChain</li>
+                </ul>
+            `;
+            modal.style.display = 'block';
+            log('UI', 'Why Invest modal displayed');
         }
 
         function closeWhyInvestModal() {
             document.getElementById('whyInvestModal').style.display = 'none';
-            document.getElementById('whyInvestContent').innerHTML = '';
-            log('MODAL', 'Why Invest modal closed');
+            log('UI', 'Why Invest modal closed');
         }
 
-        window.onload = init;
+        // Iniciar aplicación
+        init();
     </script>
 </body>
 </html>
