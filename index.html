@@ -17,7 +17,427 @@
     <!-- Canvas Confetti -->
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <style>
-        /* Same CSS as provided */
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Montserrat', Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+            color: #ffffff;
+            background: #0f0f0f;
+            position: relative;
+            overflow-x: hidden;
+        }
+        #particles-js {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+        }
+        .container { 
+            max-width: 1000px; 
+            margin: 0 auto; 
+            background: rgba(26, 26, 26, 0.7);
+            padding: 20px; 
+            border-radius: 15px; 
+            box-shadow: 0 0 20px rgba(255, 221, 0, 0.4); 
+            position: relative; 
+            backdrop-filter: blur(5px);
+        }
+        h1 { 
+            text-align: center; 
+            color: #ffdd00; 
+            margin-bottom: 10px; 
+            font-weight: 700; 
+            font-size: 28px; 
+            letter-spacing: 2px; 
+            text-transform: uppercase; 
+            text-shadow: 0 0 10px rgba(255, 221, 0, 0.7);
+        }
+        h2 { 
+            color: #ffdd00; 
+            font-weight: 600; 
+            margin-top: 20px; 
+            font-size: 20px; 
+            text-transform: uppercase; 
+        }
+        button { 
+            padding: 10px 20px; 
+            background: #ffdd00; 
+            color: #000000; 
+            border: none; 
+            border-radius: 8px; 
+            cursor: pointer; 
+            margin: 5px; 
+            transition: all 0.3s ease; 
+            font-weight: 600; 
+            font-size: 14px; 
+            position: relative;
+        }
+        button:hover:not(:disabled) { 
+            background: #ffea4d; 
+            box-shadow: 0 0 15px rgba(255, 221, 0, 0.7); 
+            transform: translateY(-2px); 
+        }
+        button:disabled { 
+            background: #666; 
+            cursor: not-allowed; 
+            box-shadow: none; 
+            transform: none; 
+        }
+        button.loading::after {
+            content: "";
+            border: 2px solid #000;
+            border-top: 2px solid #fff;
+            border-radius: 50%;
+            width: 12px;
+            height: 12px;
+            animation: spin 1s linear infinite;
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+        @keyframes spin {
+            0% { transform: translateY(-50%) rotate(0deg); }
+            100% { transform: translateY(-50%) rotate(360deg); }
+        }
+        .claim-all-btn {
+            background: linear-gradient(135deg, #ffdd00, #00cc99);
+            color: #000;
+        }
+        .claim-all-btn:hover:not(:disabled) {
+            background: linear-gradient(135deg, #ffea4d, #00e6b3);
+            box-shadow: 0 0 15px rgba(0, 204, 153, 0.7);
+        }
+        .input-group { 
+            margin: 10px 0; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+        }
+        label { 
+            font-size: 14px; 
+            color: #d0d0d0; 
+            margin-bottom: 5px; 
+        }
+        input, select { 
+            padding: 8px; 
+            margin: 5px 0; 
+            border: 2px solid #ffdd00; 
+            border-radius: 8px; 
+            width: 100%; 
+            max-width: 220px; 
+            background: #2a2a2a; 
+            color: #ffffff; 
+            outline: none; 
+            transition: all 0.3s ease; 
+            font-size: 14px; 
+        }
+        input:focus, select:focus { 
+            border-color: #ffea4d; 
+            box-shadow: 0 0 10px rgba(255, 221, 0, 0.5); 
+        }
+        input:invalid:not(:placeholder-shown) { 
+            border-color: #ff4d4d; 
+        }
+        .status { 
+            margin-top: 15px; 
+            padding: 10px; 
+            border-radius: 8px; 
+            background: #151515; 
+            font-size: 14px; 
+            text-align: center; 
+            border: 1px solid transparent; 
+        }
+        .error { 
+            color: #ff4d4d; 
+            border-color: #ff4d4d; 
+        }
+        .success { 
+            color: #00cc99; 
+            border-color: #00cc99; 
+            animation: fadeIn 0.5s ease-in-out;
+        }
+        @keyframes fadeIn {
+            0% { opacity: 0; transform: translateY(10px); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
+        table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            margin-top: 15px; 
+            background: rgba(21, 21, 21, 0.6);
+            border-radius: 8px; 
+            overflow: hidden; 
+        }
+        th, td { 
+            padding: 10px; 
+            border: 1px solid #ffdd00; 
+            text-align: center; 
+            font-size: 12px; 
+        }
+        th { 
+            background: #ffdd00; 
+            color: #000000; 
+            font-weight: 600; 
+        }
+        td { 
+            color: #d0d0d0; 
+        }
+        .stake-section { 
+            background: rgba(37, 37, 37, 0.5);
+            padding: 20px; 
+            border-radius: 15px; 
+            margin: 20px 0; 
+            box-shadow: 0 0 15px rgba(255, 221, 0, 0.2); 
+            text-align: center; 
+            border: 2px solid #ffdd00; 
+            backdrop-filter: blur(3px);
+        }
+        .stake-section h2 { 
+            margin-bottom: 15px; 
+        }
+        .yield-box { 
+            display: grid; 
+            grid-template-columns: repeat(2, 1fr); 
+            gap: 10px; 
+            margin-top: 15px; 
+            padding: 15px; 
+            background: rgba(21, 21, 21, 0.5);
+            border-radius: 10px; 
+            border: 2px solid #ffdd00; 
+            box-shadow: 0 0 10px rgba(255, 221, 0, 0.1); 
+            backdrop-filter: blur(3px);
+        }
+        .yield-box div { 
+            background: rgba(42, 42, 42, 0.6);
+            padding: 15px; 
+            border-radius: 8px; 
+            box-shadow: 0 0 8px rgba(255, 221, 0, 0.3); 
+            transition: transform 0.3s ease, background 0.3s ease; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center; 
+        }
+        .yield-box div:hover { 
+            transform: scale(1.05); 
+            background: rgba(51, 51, 51, 0.7); 
+        }
+        .yield-box p { 
+            margin: 0 0 8px 0; 
+            font-size: 12px; 
+            color: #d0d0d0; 
+            display: flex; 
+            align-items: center; 
+            gap: 5px; 
+        }
+        .yield-box span { 
+            color: #ffdd00; 
+            font-size: 16px; 
+            font-weight: 700; 
+        }
+        .yield-box .icon { 
+            font-size: 16px; 
+            color: #ffdd00; 
+        }
+        .price-section { 
+            background: rgba(21, 21, 21, 0.6);
+            padding: 15px; 
+            border-radius: 8px; 
+            margin: 15px 0; 
+            border: 1px solid #ffdd00; 
+            text-align: center;
+        }
+        .price-section h2 { 
+            margin-bottom: 10px; 
+        }
+        .price-section p { 
+            margin: 5px 0; 
+            font-size: 14px; 
+            color: #00cc99;
+        }
+        .price-section span { 
+            color: #ffdd00; 
+            font-weight: 600; 
+        }
+        .timer { 
+            color: #00cc99; 
+            font-size: 10px; 
+        }
+        .warning { 
+            color: #ff4d4d; 
+            font-size: 10px; 
+        }
+        .no-data { 
+            text-align: center; 
+            padding: 15px; 
+            color: #d0d0d0; 
+            font-style: italic; 
+        }
+        .button-group { 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            gap: 15px; 
+            margin-bottom: 20px; 
+        }
+        .chart-btn { 
+            padding: 8px 15px; 
+            font-size: 12px; 
+        }
+        .view-stakes-btn { 
+            display: flex; 
+            justify-content: center; 
+            gap: 10px; 
+            margin: 20px auto; 
+            text-align: center; 
+        }
+        .footer-buttons { 
+            display: flex; 
+            justify-content: center; 
+            gap: 15px; 
+            margin-top: 20px; 
+            flex-wrap: wrap; 
+        }
+        .footer-buttons button { 
+            display: flex; 
+            align-items: center; 
+            gap: 8px; 
+            padding: 10px 15px; 
+            font-size: 14px; 
+        }
+        .footer-buttons button i { 
+            font-size: 16px; 
+        }
+        .logo { 
+            position: relative;
+            display: block;
+            width: 80px; 
+            height: 80px; 
+            border-radius: 50%; 
+            box-shadow: 0 0 10px rgba(255, 221, 0, 0.5); 
+            transition: transform 0.3s ease; 
+            z-index: 10;
+            margin: 10px auto;
+        }
+        .logo:hover { 
+            transform: scale(1.05); 
+        }
+        .modal { 
+            display: none; 
+            position: fixed; 
+            top: 0; 
+            left: 0; 
+            width: 100%; 
+            height: 100%; 
+            background: rgba(0, 0, 0, 0.8); 
+            z-index: 1000; 
+        }
+        .modal-content { 
+            position: absolute; 
+            top: 50%; 
+            left: 50%; 
+            transform: translate(-50%, -50%); 
+            background: #1a1a1a; 
+            padding: 20px; 
+            border-radius: 15px; 
+            box-shadow: 0 0 20px rgba(255, 221, 0, 0.4); 
+            text-align: center; 
+            max-width: 300px; 
+            width: 100%; 
+        }
+        .modal-content h3 { 
+            color: #ffdd00; 
+            margin-bottom: 20px; 
+        }
+        .wallet-option { 
+            display: block; 
+            width: 100%; 
+            margin: 10px 0; 
+            padding: 10px; 
+            background: #ffdd00; 
+            color: #000; 
+            border: none; 
+            border-radius: 8px; 
+            cursor: pointer; 
+        }
+        .wallet-option:hover { 
+            background: #ffea4d; 
+        }
+        .close-modal { 
+            position: absolute; 
+            top: 10px; 
+            right: 10px; 
+            color: #ffdd00; 
+            font-size: 20px; 
+            cursor: pointer; 
+        }
+        canvas#confetti-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 9999;
+            pointer-events: none;
+        }
+        #whyInvestModal .modal-content {
+            max-width: 800px;
+            width: 90%;
+            background: rgba(26, 26, 26, 0.7);
+            backdrop-filter: blur(5px);
+            color: #d0d0d0;
+            text-align: left;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        #whyInvestModal .modal-content h1,
+        #whyInvestModal .modal-content h2,
+        #whyInvestModal .modal-content h3 {
+            color: #ffdd00;
+            text-shadow: 0 0 5px rgba(255, 221, 0, 0.5);
+        }
+        #whyInvestModal .modal-content p,
+        #whyInvestModal .modal-content li {
+            font-size: 14px;
+            line-height: 1.6;
+            color: #d0d0d0;
+        }
+        #whyInvestModal .modal-content a {
+            color: #00cc99;
+            text-decoration: none;
+        }
+        #whyInvestModal .modal-content a:hover {
+            text-decoration: underline;
+        }
+        @media (max-width: 600px) {
+            .container { padding: 15px; background: rgba(26, 26, 26, 0.8); }
+            h1 { font-size: 24px; }
+            h2 { font-size: 18px; }
+            button { padding: 8px 15px; font-size: 12px; }
+            input, select { max-width: 100%; }
+            th, td { font-size: 10px; padding: 8px; }
+            .yield-box { grid-template-columns: 1fr; background: rgba(21, 21, 21, 0.6); }
+            .yield-box div { background: rgba(42, 42, 42, 0.7); }
+            .stake-section { background: rgba(37, 37, 37, 0.6); }
+            .button-group { flex-direction: column; gap: 10px; }
+            .chart-btn { padding: 6px 12px; font-size: 10px; }
+            .view-stakes-btn { flex-direction: column; gap: 10px; }
+            .footer-buttons { flex-direction: column; gap: 10px; }
+            .footer-buttons button { font-size: 12px; padding: 8px 12px; }
+            .footer-buttons button i { font-size: 14px; }
+            .logo { width: 60px; height: 60px; margin: 5px auto; }
+            .price-section { padding: 10px; }
+            .price-section p { font-size: 12px; }
+            #whyInvestModal .modal-content {
+                max-width: 95%;
+                padding: 15px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -284,7 +704,7 @@
                 document.getElementById('account').innerText = `${account.slice(0, 6)}...${account.slice(-4)}`;
                 updateStatus(`Account changed: ${account.slice(0, 6)}...`, false);
                 updatePLPBalance();
-                updatePWRBalance();
+                update barring unforeseen circumstances, updatePWRBalance();
                 updateSPWRBalance();
                 updateTotalRewards();
                 updateAPRYield();
@@ -460,6 +880,7 @@
             if (isProcessing) return;
             isProcessing = true;
             const claimButton = document.querySelector(`#claim-${stakeId}`);
+            if (!claimButton) throw new Error("Claim button not found.");
             claimButton.disabled = true;
             claimButton.classList.add('loading');
             try {
@@ -471,7 +892,7 @@
                 if (stakeDetails.owner.toLowerCase() !== account.toLowerCase()) throw new Error("You are not the owner of this stake.");
                 if (stakeDetails.claimed) throw new Error("Stake has already been claimed.");
                 const currentTime = Math.floor(Date.now() / 1000);
-                if (BigInt(stakeDetails.endTime) > currentTime) throw new Error("Stake has not yet completed.");
+                if (BigInt(stakeDetails.endTime) > currentTime) throw new Error("Stake has not yet completed. Use Early Withdraw if needed.");
                 const claimWindow = await contract.methods.CLAIM_WINDOW().call();
                 if (currentTime > Number(stakeDetails.endTime) + Number(claimWindow)) {
                     throw new Error("Claim window has expired. Contact the project team: https://t.me/+fM8oDk6HssdlNmVh.");
@@ -489,8 +910,9 @@
                     await contract.methods.calculateReward(stakeId).send({ from: account, gas: Math.ceil(updateGas * 1.5) });
                 } catch (error) {
                     console.warn(`Failed to update reward for stake ${stakeId}:`, error);
+                    updateStatus(`Warning: Reward update failed, proceeding with withdrawal for stake ${stakeId}.`, true);
                 }
-                updateStatus(`Withdrawing stake ${stakeId} (PLP and PWR)...`, false);
+                updateStatus(`Withdrawing PLP and PWR for stake ${stakeId}...`, false);
                 let withdrawGas;
                 try {
                     withdrawGas = await contract.methods.withdrawStake(stakeId).estimateGas({ from: account });
@@ -501,7 +923,7 @@
                 try {
                     await contract.methods.withdrawStake(stakeId).call({ from: account });
                 } catch (callError) {
-                    throw new Error(`Simulation failed: ${callError.message.includes("revert") ? callError.message.split("revert ")[1] : "Unknown revert reason"}`);
+                    throw new Error(`Withdrawal simulation failed: ${callError.message.includes("revert") ? callError.message.split("revert ")[1] : "Unknown revert reason"}`);
                 }
                 const withdrawTx = await contract.methods.withdrawStake(stakeId).send({
                     from: account,
@@ -512,7 +934,7 @@
                 const finalPWR = await pwrContract.methods.balanceOf(account).call();
                 const finalSPWR = await spwrContract.methods.balanceOf(account).call();
                 if (BigInt(finalPLP) <= BigInt(initialPLP)) throw new Error("PLP not delivered to wallet.");
-                if (BigInt(finalPWR) <= BigInt(initialPWR) && BigInt(stakeDetails.rewardAmount) > 0) throw new Error("PWR not delivered to wallet.");
+                if (BigInt(finalPWR) <= BigInt(initialPWR) && BigInt(stakeDetails.rewardAmount) > 0) throw new Error("PWR rewards not delivered to wallet.");
                 if (BigInt(finalSPWR) >= BigInt(initialSPWR)) throw new Error("SPWR not surrendered.");
                 updateStatus(`Stake ${stakeId} claimed successfully! PLP and PWR delivered. Tx: https://scan.mypinata.cloud/tx/${withdrawTx.transactionHash}`, false);
                 triggerConfetti();
@@ -539,19 +961,23 @@
             if (isProcessing) return;
             isProcessing = true;
             const withdrawButton = document.querySelector(`#withdraw-${stakeId}`);
+            if (!withdrawButton) throw new Error("Withdraw button not found.");
             withdrawButton.disabled = true;
             withdrawButton.classList.add('loading');
             try {
-                if (!contract || !account) throw new Error("Wallet or contract not initialized.");
+                if (!contract || !account || !plpContract || !spwrContract) throw new Error("Wallet or contract not initialized.");
                 const networkId = await web3.eth.net.getId();
                 if (Number(networkId) !== DESIRED_NETWORK_ID) throw new Error("Please switch to PulseChain.");
                 const stakeDetails = await contract.methods.getStakeDetails(stakeId).call();
                 console.log(`Stake ${stakeId} details:`, stakeDetails);
+                if (stakeDetails.owner.toLowerCase() !== account.toLowerCase()) throw new Error("You are not the owner of this stake.");
                 if (stakeDetails.claimed) throw new Error("Stake already withdrawn.");
                 if (BigInt(stakeDetails.endTime) <= Math.floor(Date.now() / 1000)) {
-                    throw new Error("Stake is completed. Use 'Claim All' to withdraw.");
+                    throw new Error("Stake is completed. Use 'Claim All' to withdraw PLP and rewards.");
                 }
-                updateStatus(`Early withdrawing stake ${stakeId}...`, false);
+                const initialPLP = await plpContract.methods.balanceOf(account).call();
+                const initialSPWR = await spwrContract.methods.balanceOf(account).call();
+                updateStatus(`Initiating early withdrawal for stake ${stakeId} (penalty applies)...`, false);
                 let gas;
                 try {
                     gas = await contract.methods.earlyWithdrawStake(stakeId).estimateGas({ from: account });
@@ -562,14 +988,18 @@
                 try {
                     await contract.methods.earlyWithdrawStake(stakeId).call({ from: account });
                 } catch (callError) {
-                    throw new Error(`Simulation failed: ${callError.message.includes("revert") ? callError.message.split("revert ")[1] : "Unknown revert reason"}`);
+                    throw new Error(`Early withdrawal simulation failed: ${callError.message.includes("revert") ? callError.message.split("revert ")[1] : "Unknown revert reason"}`);
                 }
                 const tx = await contract.methods.earlyWithdrawStake(stakeId).send({
                     from: account,
                     gas: Math.ceil(gas * 1.5),
                     gasPrice: await web3.eth.getGasPrice()
                 });
-                updateStatus(`Stake ${stakeId} withdrawn early with penalty! Tx: https://scan.mypinata.cloud/tx/${tx.transactionHash}`, false);
+                const finalPLP = await plpContract.methods.balanceOf(account).call();
+                const finalSPWR = await spwrContract.methods.balanceOf(account).call();
+                if (BigInt(finalPLP) <= BigInt(initialPLP)) throw new Error("PLP not delivered to wallet after early withdrawal.");
+                if (BigInt(finalSPWR) >= BigInt(initialSPWR)) throw new Error("SPWR not surrendered after early withdrawal.");
+                updateStatus(`Stake ${stakeId} withdrawn early with penalty! PLP returned. Tx: https://scan.mypinata.cloud/tx/${tx.transactionHash}`, false);
                 triggerConfetti();
                 await updatePLPBalance();
                 await updatePWRBalance();
