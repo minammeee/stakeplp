@@ -427,7 +427,7 @@
             .footer-buttons button { font-size: 12px; padding: 8px 12px; }
             .footer-buttons button i { font-size: 14px; }
             .logo { width: 60px; height: 60px; margin: 5px auto; }
-            .price-section { padding: 10px; }
+            gefunden: .price-section { padding: 10px; }
             .price-section p { font-size: 12px; }
             #whyInvestModal .modal-content {
                 max-width: 95%;
@@ -458,6 +458,10 @@
             <div>
                 <h2>PLP Balance</h2>
                 <p>Available Balance: <span id="plpBalance">0</span> PLP</p>
+            </div>
+            <div>
+                <h2>PWR Balance</h2>
+                <p>Available Balance: <span id="pwrBalance">0</span> PWR</p>
             </div>
             <div>
                 <h2>SPWR (Staked PLP)</h2>
@@ -576,7 +580,7 @@
         const pwrAddressRaw = "0x3Eb3B7b3D95Cb3699295D7868F85e43b56AeeFcB";
         const DESIRED_NETWORK_ID = 369;
         let contractAddress, plpAddress, pwrAddress;
-        let web3, account, contract, plpContract, spwrContract, pwrPriceUsd = 0, spwrAddress, selectedProvider;
+        let web3, account, contract, plpContract, pwrContract, spwrContract, pwrPriceUsd = 0, spwrAddress, selectedProvider;
         let isProcessing = false;
 
         const powerStakeABI = [
@@ -667,7 +671,8 @@
                 closeWalletModal();
                 await initializeContracts();
                 await updatePLPBalance();
-                await editSPWRBalance();
+                await updatePWRBalance();
+                await updateSPWRBalance();
                 await updateStakesTable();
                 provider.on('accountsChanged', handleAccountsChanged);
                 provider.on('chainChanged', () => window.location.reload());
@@ -689,7 +694,8 @@
                 document.getElementById('account').innerText = `${account.slice(0, 6)}...${account.slice(-4)}`;
                 updateStatus(`Account changed: ${account.slice(0, 6)}...`, false);
                 updatePLPBalance();
-                editSPWRBalance();
+                updatePWRBalance();
+                updateSPWRBalance();
                 updateStakesTable();
             }
         }
@@ -726,6 +732,7 @@
                 }
                 contract = new web3.eth.Contract(powerStakeABI, contractAddress);
                 plpContract = new web3.eth.Contract(erc20ABI, plpAddress);
+                pwrContract = new web3.eth.Contract(erc20ABI, pwrAddress);
                 spwrAddress = await contract.methods.spwrToken().call();
                 spwrContract = new web3.eth.Contract(erc20ABI, spwrAddress);
                 document.getElementById('stakeButton').disabled = false;
@@ -747,7 +754,19 @@
             }
         }
 
-        async function editSPWRBalance() {
+        async function updatePWRBalance() {
+            try {
+                if (!pwrContract || !account) return;
+                const balance = await pwrContract.methods.balanceOf(account).call();
+                const balancePWR = web3.utils.fromWei(balance, 'ether');
+                document.getElementById('pwrBalance').innerText = parseFloat(balancePWR).toFixed(2);
+            } catch (error) {
+                console.error("Update PWR balance error:", error);
+                updateStatus(`Error fetching PWR balance: ${error.message}`, true);
+            }
+        }
+
+        async function updateSPWRBalance() {
             try {
                 if (!spwrContract || !account) return;
                 const balance = await spwrContract.methods.balanceOf(account).call();
@@ -787,7 +806,8 @@
                 updateStatus("Stake created successfully, SPWR received!", false);
                 triggerConfetti();
                 await updatePLPBalance();
-                await editSPWRBalance();
+                await updatePWRBalance();
+                await updateSPWRBalance();
                 await updateStakesTable();
                 document.getElementById('stakeAmount').value = '';
                 document.getElementById('stakePeriod').value = '';
@@ -808,24 +828,38 @@
             claimButton.disabled = true;
             claimButton.classList.add('loading');
             try {
-                if (!contract || !account) throw new Error("Wallet or contract not initialized.");
+                if (!contract || !account || !plpContract || !pwrContract || !spwrContract) throw new Error("Wallet or contracts not initialized.");
                 const networkId = await web3.eth.net.getId();
                 if (Number(networkId) !== DESIRED_NETWORK_ID) throw new Error("Please switch to PulseChain.");
                 const stakeDetails = await contract.methods.getStakeDetails(stakeId).call();
                 console.log(`Stake ${stakeId} details:`, stakeDetails);
                 if (stakeDetails.claimed) throw new Error("Stake already claimed.");
                 if (BigInt(stakeDetails.endTime) > Math.floor(Date.now() / 1000)) throw new Error("Stake not yet completed.");
-                updateStatus(`Withdrawing stake ${stakeId} and claiming rewards...`, false);
+                // Store initial balances for verification
+                const initialPLP = await plpContract.methods.balanceOf(account).call();
+                const initialPWR = await pwrContract.methods.balanceOf(account).call();
+                const initialSPWR = await spwrContract.methods.balanceOf(account).call();
+                updateStatus(`Withdrawing stake ${stakeId} (PLP) and claiming rewards (PWR)...`, false);
+                // Withdraw stake (returns PLP, burns SPWR)
                 const withdrawGas = await contract.methods.withdrawStake(stakeId).estimateGas({ from: account });
                 const withdrawTx = await contract.methods.withdrawStake(stakeId).send({ from: account, gas: Math.ceil(withdrawGas * 1.5) });
-                console.log(`Withdraw tx: https://scan.pulsechain.com/tx/${withdrawTx.transactionHash}`);
+                console.log(`Withdraw PLP tx: https://scan.pulsechain.com/tx/${withdrawTx.transactionHash}`);
+                // Claim rewards (delivers PWR)
                 const claimGas = await contract.methods.claimRewards(stakeId).estimateGas({ from: account });
                 const claimTx = await contract.methods.claimRewards(stakeId).send({ from: account, gas: Math.ceil(claimGas * 1.5) });
-                console.log(`Claim tx: https://scan.pulsechain.com/tx/${claimTx.transactionHash}`);
-                updateStatus(`Stake ${stakeId}: SPWR surrendered, PLP and PWR claimed successfully!`, false);
+                console.log(`Claim PWR tx: https://scan.pulsechain.com/tx/${claimTx.transactionHash}`);
+                // Verify balances
+                const finalPLP = await plpContract.methods.balanceOf(account).call();
+                const finalPWR = await pwrContract.methods.balanceOf(account).call();
+                const finalSPWR = await spwrContract.methods.balanceOf(account).call();
+                if (BigInt(finalPLP) <= BigInt(initialPLP)) throw new Error("PLP not delivered to wallet.");
+                if (BigInt(finalPWR) <= BigInt(initialPWR)) throw new Error("PWR not delivered to wallet.");
+                if (BigInt(finalSPWR) >= BigInt(initialSPWR)) throw new Error("SPWR not surrendered.");
+                updateStatus(`Stake ${stakeId}: SPWR surrendered, PLP and PWR delivered!`, false);
                 triggerConfetti();
                 await updatePLPBalance();
-                await editSPWRBalance();
+                await updatePWRBalance();
+                await updateSPWRBalance();
                 await updateStakesTable();
             } catch (error) {
                 console.error(`Claim error for stake ${stakeId}:`, error);
@@ -872,7 +906,8 @@
                 updateStatus(`Stake ${stakeId} withdrawn early with penalty, SPWR surrendered!`, false);
                 triggerConfetti();
                 await updatePLPBalance();
-                await editSPWRBalance();
+                await updatePWRBalance();
+                await updateSPWRBalance();
                 await updateStakesTable();
             } catch (error) {
                 console.error(`Early withdraw error for stake ${stakeId}:`, error);
